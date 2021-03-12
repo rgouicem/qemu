@@ -334,6 +334,8 @@ const QEMULogItem qemu_log_items[] = {
 #endif
     { LOG_STRACE, "strace",
       "log every user-mode syscall, its input, and its result" },
+    { TCG_LOG, "tcg",
+      "log events regarding TCG\n"},
     { 0, NULL, NULL },
 };
 
