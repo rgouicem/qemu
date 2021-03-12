@@ -413,6 +413,8 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
     return;
 }
 
+extern uint64_t tb_lookup_time;
+extern uint64_t tb_gen_code_time;
 static inline TranslationBlock *tb_find(CPUState *cpu,
                                         TranslationBlock *last_tb,
                                         int tb_exit, uint32_t cflags)
@@ -421,32 +423,20 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     TranslationBlock *tb;
     target_ulong cs_base, pc;
     uint32_t flags;
-    uint64_t start, end;
-    struct timespec ts;
 
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    start = ts.tv_sec * 1E9 + ts.tv_nsec;
+    profile_start();
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
 
     tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
-
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    end = ts.tv_sec * 1E9 + ts.tv_nsec;
-
-    qemu_log_mask(TCG_LOG, "%s:%d: lookup: %ld ns\n",
-                  __func__, __LINE__, end - start);
+    profile_stop(tb_lookup);
     if (tb == NULL) {
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        start = ts.tv_sec * 1E9 + ts.tv_nsec;
+        profile_start();
         mmap_lock();
         tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
         mmap_unlock();
         /* We add the TB in the virtual pc hash table for the fast lookup */
         qatomic_set(&cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)], tb);
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        end = ts.tv_sec * 1E9 + ts.tv_nsec;
-        qemu_log_mask(TCG_LOG, "%s:%d: tb_gen: %ld ns\n",
-                      __func__, __LINE__, end - start);
+        profile_stop(tb_gen_code);
     }
 #ifndef CONFIG_USER_ONLY
     /* We don't take care of direct jumps when address mapping changes in
@@ -729,6 +719,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
 /* main execution loop */
 
+extern uint64_t cpu_loop_exec_tb_time;
 int cpu_exec(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
@@ -795,8 +786,6 @@ int cpu_exec(CPUState *cpu)
     while (!cpu_handle_exception(cpu, &ret)) {
         TranslationBlock *last_tb = NULL;
         int tb_exit = 0;
-        struct timespec ts;
-        uint64_t start, end;
 
         while (!cpu_handle_interrupt(cpu, &last_tb)) {
             uint32_t cflags = cpu->cflags_next_tb;
@@ -815,13 +804,9 @@ int cpu_exec(CPUState *cpu)
 
             tb = tb_find(cpu, last_tb, tb_exit, cflags);
 
-            clock_gettime(CLOCK_MONOTONIC, &ts);
-            start = ts.tv_sec * 1E9 + ts.tv_nsec;
+            profile_start();
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
-            clock_gettime(CLOCK_MONOTONIC, &ts);
-            end = ts.tv_sec * 1E9 + ts.tv_nsec;
-            qemu_log_mask(TCG_LOG, "%s:%d: cpu_loop_exec_tb: %ld ns\n",
-                          __func__, __LINE__, end - start);
+            profile_stop(cpu_loop_exec_tb);
             /* Try to align the host and virtual clocks
                if the guest is in advance */
             align_clocks(&sc, cpu);

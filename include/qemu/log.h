@@ -64,7 +64,7 @@ static inline bool qemu_log_separate(void)
 #define CPU_LOG_PLUGIN     (1 << 18)
 /* LOG_STRACE is used for user-mode strace logging. */
 #define LOG_STRACE         (1 << 19)
-#define TCG_LOG            (1 << 20)
+#define PROF               (1 << 20)
 
 /* Lock output for a series of related logs.  Since this is not needed
  * for a single qemu_log / qemu_log_mask / qemu_log_mask_and_addr, we
@@ -165,4 +165,26 @@ void qemu_log_flush(void);
 /* Close the log file */
 void qemu_log_close(void);
 
+/*
+ * Profiling macros
+ */
+#define profile_start()                         \
+    uint64_t start, end;                        \
+    struct timespec ts;                         \
+    do {                                        \
+        clock_gettime(CLOCK_MONOTONIC, &ts);    \
+        start = ts.tv_sec * 1E9 + ts.tv_nsec;   \
+    } while (0)
+#define profile_stop(var)                                               \
+    do {                                                                \
+        clock_gettime(CLOCK_MONOTONIC, &ts);                            \
+        end = ts.tv_sec * 1E9 + ts.tv_nsec;                             \
+        __sync_fetch_and_add(&(var##_time), end - start);               \
+    } while (0)
 #endif
+
+        /* qemu_log_mask(PROF, "%s;%ld\n",                                 \ */
+        /*               __func__, end - start);                           \ */
+
+
+        /* __sync_fetch_and_add(&(var##_time), end - start);               \ */
