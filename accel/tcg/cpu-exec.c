@@ -718,8 +718,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 }
 
 /* main execution loop */
-
-extern uint64_t cpu_loop_exec_tb_time;
+extern uint64_t exec_tb_time;
 int cpu_exec(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
@@ -744,6 +743,7 @@ int cpu_exec(CPUState *cpu)
      */
     init_delay_params(&sc, cpu);
 
+    profile_start();
     /* prepare setjmp context for exception handling */
     if (sigsetjmp(cpu->jmp_env, 0) != 0) {
 #if defined(__clang__)
@@ -804,9 +804,8 @@ int cpu_exec(CPUState *cpu)
 
             tb = tb_find(cpu, last_tb, tb_exit, cflags);
 
-            profile_start();
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
-            profile_stop(cpu_loop_exec_tb);
+
             /* Try to align the host and virtual clocks
                if the guest is in advance */
             align_clocks(&sc, cpu);
@@ -814,6 +813,7 @@ int cpu_exec(CPUState *cpu)
     }
 
     cpu_exec_exit(cpu);
+    profile_stop(exec_tb);
     rcu_read_unlock();
 
     return ret;

@@ -26,14 +26,14 @@
 extern void __gcov_dump(void);
 #endif
 
-uint64_t tb_lookup_time, tb_gen_code_time, cpu_loop_exec_tb_time;
+uint64_t tb_lookup_time, tb_gen_code_time, exec_tb_time;
 
 void preexit_cleanup(CPUArchState *env, int code)
 {
     /* Dump profiling info */
     qemu_log_mask(PROF, "tb_lookup: %lu\n", tb_lookup_time);
     qemu_log_mask(PROF, "tb_gen_code: %lu\n", tb_gen_code_time);
-    qemu_log_mask(PROF, "cpu_loop_exec_tb: %lu\n", cpu_loop_exec_tb_time);
+    qemu_log_mask(PROF, "exec_tb: %lu\n", exec_tb_time);
 #ifdef CONFIG_GPROF
     _mcleanup();
 #endif
