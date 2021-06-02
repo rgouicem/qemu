@@ -26,6 +26,8 @@
 extern void __gcov_dump(void);
 #endif
 
+extern void mem_access_hashmap_dump(void);
+
 void preexit_cleanup(CPUArchState *env, int code)
 {
 #ifdef CONFIG_GPROF
@@ -36,4 +38,6 @@ void preexit_cleanup(CPUArchState *env, int code)
 #endif
         gdb_exit(code);
         qemu_plugin_atexit_cb();
+
+        mem_access_hashmap_dump();
 }

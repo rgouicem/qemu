@@ -171,7 +171,114 @@ void HELPER(exit_atomic)(CPUArchState *env)
     cpu_loop_exit_atomic(env_cpu(env), GETPC());
 }
 
-void HELPER(trace_memory_access)(void)
+
+#define MEM_ACCESS_HASHMAP_SIZE (1 << 16)
+
+struct mem_access_list {
+    struct mem_access *head;
+    pthread_rwlock_t lock;
+    uint64_t size;
+};
+
+struct mem_access {
+    void *addr;
+    pid_t tid;
+    uint64_t count;
+    struct mem_access *next;
+};
+
+static struct mem_access_list *mem_access_hashmap;
+
+static inline void alloc_mem_access_hashmap(void)
 {
-    qemu_log("%s: test\n", __func__);
+    mem_access_hashmap = malloc(MEM_ACCESS_HASHMAP_SIZE * sizeof(struct mem_access_list));
+    if (!mem_access_hashmap) {
+        perror("Failed to allocate hashmap\n");
+        exit(-1);
+    }
+    for (int i = 0; i < MEM_ACCESS_HASHMAP_SIZE; i++) {
+        pthread_rwlock_init(&mem_access_hashmap[i].lock, NULL);
+    }
+}
+
+static inline void mem_access_add(uint64_t addr, pid_t tid)
+{
+    struct mem_access_list *list;
+    struct mem_access *item;
+    uint64_t hash;
+    bool writing = false;
+
+    /* addr is shifted to do this at the page granularity */
+    addr >>= 12;
+    hash = addr % MEM_ACCESS_HASHMAP_SIZE;
+    /* check if this address has already been accessed by this tid */
+    list = &mem_access_hashmap[hash];
+    pthread_rwlock_rdlock(&list->lock);
+retry:
+    for (item = list->head; item; item = item->next) {
+        /* addr already accessed by tid, increment count */
+        if (item->addr == (void *)addr && item->tid == tid) {
+            __atomic_fetch_add(&item->count, 1, __ATOMIC_SEQ_CST);
+            /* item->count++; */
+            goto end;
+        }
+    }
+
+    /* addr never accessed by tid, create a new item in hashmap */
+    /* First, we check the list again with the write lock */
+    if (!writing) {
+        pthread_rwlock_unlock(&list->lock);
+        pthread_rwlock_wrlock(&list->lock);
+        writing = true;
+        goto retry;
+    }
+    item = malloc(sizeof(struct mem_access));
+    if (!item) {
+        perror("Failed to allocate a new item for hashmap\n");
+        exit(-2);
+    }
+    item->addr = (void *)addr;
+    item->tid = tid;
+    item->count = 1;
+    item->next = mem_access_hashmap[hash].head;
+    list->head = item;
+    __atomic_fetch_add(&list->size, 1, __ATOMIC_SEQ_CST);
+end:
+    pthread_rwlock_unlock(&list->lock);
+}
+
+static inline void trace_tcg_ldst(uint64_t addr, const char *op)
+{
+    pid_t tid = gettid();
+
+    if (unlikely(!mem_access_hashmap)) {
+        alloc_mem_access_hashmap();
+    }
+
+    /* qemu_log_mask(LOG_ST_LD, "%d;%s;%p\n", */
+    /*               tid, op, (void *)addr); */
+    mem_access_add(addr, tid);
+}
+
+void HELPER(trace_tcg_st)(uint64_t addr)
+{
+    trace_tcg_ldst(addr, "st");
+}
+
+void HELPER(trace_tcg_ld)(uint64_t addr)
+{
+    trace_tcg_ldst(addr, "ld");
+}
+
+void mem_access_hashmap_dump(void);
+void mem_access_hashmap_dump(void)
+{
+    struct mem_access *item;
+
+    for (int i = 0; i < MEM_ACCESS_HASHMAP_SIZE; i++) {
+        for (item = mem_access_hashmap[i].head; item; item = item->next) {
+            qemu_log_mask(LOG_ST_LD, "%d;%p;%lu\n",
+                          item->tid, item->addr, item->count);
+        }
+    }
 }

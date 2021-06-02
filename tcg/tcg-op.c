@@ -2855,6 +2855,8 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, MemOp memop)
             g_assert_not_reached();
         }
     }
+
+    gen_helper_trace_tcg_ld(addr);
 }
 
 void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, MemOp memop)
@@ -2894,6 +2896,8 @@ void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, MemOp memop)
     if (swap) {
         tcg_temp_free_i32(swap);
     }
+
+    gen_helper_trace_tcg_st(addr);
 }
 
 void tcg_gen_qemu_ld_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
@@ -2950,6 +2954,8 @@ void tcg_gen_qemu_ld_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
             g_assert_not_reached();
         }
     }
+
+    gen_helper_trace_tcg_ld(addr);
 }
 
 void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
@@ -2995,6 +3001,8 @@ void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
     if (swap) {
         tcg_temp_free_i64(swap);
     }
+
+    gen_helper_trace_tcg_st(addr);
 }
 
 static void tcg_gen_ext_i32(TCGv_i32 ret, TCGv_i32 val, MemOp opc)

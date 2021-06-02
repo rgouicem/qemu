@@ -334,6 +334,8 @@ const QEMULogItem qemu_log_items[] = {
 #endif
     { LOG_STRACE, "strace",
       "log every user-mode syscall, its input, and its result" },
+    { LOG_ST_LD, "stld",
+      "log every access to memory from the emulated program" },
     { 0, NULL, NULL },
 };
 
