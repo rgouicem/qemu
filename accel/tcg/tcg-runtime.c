@@ -170,3 +170,8 @@ void HELPER(exit_atomic)(CPUArchState *env)
 {
     cpu_loop_exit_atomic(env_cpu(env), GETPC());
 }
+
+void HELPER(trace_memory_access)(void)
+{
+    qemu_log("%s: test\n", __func__);
+}
