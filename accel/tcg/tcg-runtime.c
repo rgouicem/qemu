@@ -221,7 +221,6 @@ retry:
         /* addr already accessed by tid, increment count */
         if (item->addr == (void *)addr && item->tid == tid) {
             __atomic_fetch_add(&item->count, 1, __ATOMIC_SEQ_CST);
-            /* item->count++; */
             goto end;
         }
     }
