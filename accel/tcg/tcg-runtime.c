@@ -32,6 +32,8 @@
 #include "tcg/tcg.h"
 #include "tb-lookup.h"
 
+#include <sys/syscall.h>
+
 /* 32-bit helpers */
 
 int32_t HELPER(div_i32)(int32_t arg1, int32_t arg2)
@@ -249,7 +251,7 @@ end:
 
 static inline void trace_tcg_ldst(uint64_t addr, const char *op)
 {
-    pid_t tid = gettid();
+    pid_t tid = syscall(SYS_gettid);
 
     if (unlikely(!mem_access_hashmap)) {
         alloc_mem_access_hashmap();
