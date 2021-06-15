@@ -173,8 +173,9 @@ void HELPER(exit_atomic)(CPUArchState *env)
     cpu_loop_exit_atomic(env_cpu(env), GETPC());
 }
 
-#define MEM_ACCESS_HASHMAP_SIZE 128
-#define MEM_ACCESS_MMAP_SIZE    (1 << 26)
+#define MEM_ACCESS_HASHMAP_SIZE     128
+#define MEM_ACCESS_MMAP_SIZE_NR     (1 << 26)
+#define MEM_ACCESS_MMAP_SIZE_BYTES  (MEM_ACCESS_MMAP_SIZE_NR * sizeof(struct mem_access))
 
 struct mem_access {
     uint64_t addr;
@@ -206,7 +207,8 @@ static struct mem_access_bucket *alloc_mem_access_hashmap(void)
     return hm;
 }
 
-static inline void init_mem_access_bucket(struct mem_access_bucket *bucket, pid_t tid)
+static inline void init_mem_access_bucket(struct mem_access_bucket *bucket,
+                                          pid_t tid)
 {
     size_t namelen = strlen(stld_dir_path) + 10;
 
@@ -227,13 +229,14 @@ static inline void init_mem_access_bucket(struct mem_access_bucket *bucket, pid_
         perror("Failed to open file");
         exit(-2);
     }
-    if (truncate(bucket->path,
-                 MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access))) {
+    if (truncate(bucket->path, MEM_ACCESS_MMAP_SIZE_BYTES)) {
         perror("Truncate failed");
         exit(2);
     }
+    qemu_log_mask(LOG_ST_LD, "truncate size: %ld bytes\n",
+                  MEM_ACCESS_MMAP_SIZE_BYTES);
 
-    bucket->array = mmap(NULL, MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access),
+    bucket->array = mmap(NULL, MEM_ACCESS_MMAP_SIZE_BYTES,
                          PROT_READ | PROT_WRITE, MAP_SHARED, bucket->fd, 0);
     if (bucket->array == MAP_FAILED) {
         perror("Failed to mmap array");
@@ -244,21 +247,20 @@ static inline void init_mem_access_bucket(struct mem_access_bucket *bucket, pid_
 static void mem_access_bucket_remap(struct mem_access_bucket *bucket)
 {
     /* Unmap previous memory area */
-    if (munmap(bucket->array, MEM_ACCESS_MMAP_SIZE)) {
+    if (munmap(bucket->array, MEM_ACCESS_MMAP_SIZE_BYTES)) {
         perror("munmap");
         exit(2);
     }
     bucket->rounds++;
 
     /* Map the following region in the file */
-    if (truncate(bucket->path,
-                 bucket->rounds * MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access))) {
+    if (truncate(bucket->path, bucket->rounds * MEM_ACCESS_MMAP_SIZE_BYTES)) {
         perror("Re-truncate failed");
         exit(2);
     }
-    bucket->array = mmap(NULL, MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access),
+    bucket->array = mmap(NULL, MEM_ACCESS_MMAP_SIZE_BYTES,
                          PROT_READ | PROT_WRITE, MAP_SHARED, bucket->fd,
-                         bucket->rounds * MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access));
+                         bucket->rounds * MEM_ACCESS_MMAP_SIZE_BYTES);
     if (bucket->array == MAP_FAILED) {
         perror("Failed to remmap array");
         exit(2);
@@ -282,7 +284,7 @@ static inline void mem_access_add(uint64_t addr, pid_t tid)
     }
 
     /* If the curent mmap is full, remap */
-    if (unlikely(bucket->count == MEM_ACCESS_MMAP_SIZE)) {
+    if (unlikely(bucket->count == MEM_ACCESS_MMAP_SIZE_NR)) {
         mem_access_bucket_remap(bucket);
     }
 
