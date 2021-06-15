@@ -173,95 +173,136 @@ void HELPER(exit_atomic)(CPUArchState *env)
     cpu_loop_exit_atomic(env_cpu(env), GETPC());
 }
 
+#define MEM_ACCESS_HASHMAP_SIZE 128
+#define MEM_ACCESS_MMAP_SIZE    (1 << 26)
 
-/* #define MEM_ACCESS_HASHMAP_SIZE (1 << 16) */
+struct mem_access {
+    uint64_t addr;
+    uint64_t time;
+};
 
-/* struct mem_access_list { */
-/*     struct mem_access *head; */
-/*     pthread_rwlock_t lock; */
-/*     uint64_t size; */
-/* }; */
+struct mem_access_bucket {
+    struct mem_access *array;
+    uint64_t count;
+    pid_t tid;
+    int fd;
+    int rounds;
+    char *path;
+};
 
-/* struct mem_access { */
-/*     void *addr; */
-/*     pid_t tid; */
-/*     uint64_t count; */
-/*     struct mem_access *next; */
-/* }; */
+static struct mem_access_bucket *mem_access_hashmap;
+const char *stld_dir_path;
 
-/* static struct mem_access_list *mem_access_hashmap; */
-/* /\* static uint64_t mem_access_clock; *\/ */
+static struct mem_access_bucket *alloc_mem_access_hashmap(void)
+{
+    struct mem_access_bucket *hm = calloc(MEM_ACCESS_HASHMAP_SIZE,
+                                          sizeof(struct mem_access_bucket));
 
-/* static inline void alloc_mem_access_hashmap(void) */
-/* { */
-/*     mem_access_hashmap = malloc(MEM_ACCESS_HASHMAP_SIZE * sizeof(struct mem_access_list)); */
-/*     if (!mem_access_hashmap) { */
-/*         perror("Failed to allocate hashmap\n"); */
-/*         exit(-1); */
-/*     } */
-/*     for (int i = 0; i < MEM_ACCESS_HASHMAP_SIZE; i++) { */
-/*         pthread_rwlock_init(&mem_access_hashmap[i].lock, NULL); */
-/*     } */
-/* } */
+    if (!hm) {
+        perror("Failed to allocate hashmap");
+        exit(2);
+    }
 
-/* static inline void mem_access_add(uint64_t addr, pid_t tid) */
-/* { */
-/*     struct mem_access_list *list; */
-/*     struct mem_access *item; */
-/*     uint64_t hash; */
-/*     bool writing = false; */
+    return hm;
+}
 
-/*     /\* addr is shifted to do this at the page granularity *\/ */
-/*     addr >>= 12; */
-/*     hash = addr % MEM_ACCESS_HASHMAP_SIZE; */
-/*     /\* check if this address has already been accessed by this tid *\/ */
-/*     list = &mem_access_hashmap[hash]; */
-/*     pthread_rwlock_rdlock(&list->lock); */
-/* retry: */
-/*     for (item = list->head; item; item = item->next) { */
-/*         /\* addr already accessed by tid, increment count *\/ */
-/*         if (item->addr == (void *)addr && item->tid == tid) { */
-/*             __atomic_fetch_add(&item->count, 1, __ATOMIC_SEQ_CST); */
-/*             goto end; */
-/*         } */
-/*     } */
+static inline void init_mem_access_bucket(struct mem_access_bucket *bucket, pid_t tid)
+{
+    size_t namelen = strlen(stld_dir_path) + 10;
 
-/*     /\* addr never accessed by tid, create a new item in hashmap *\/ */
-/*     /\* First, we check the list again with the write lock *\/ */
-/*     if (!writing) { */
-/*         pthread_rwlock_unlock(&list->lock); */
-/*         pthread_rwlock_wrlock(&list->lock); */
-/*         writing = true; */
-/*         goto retry; */
-/*     } */
-/*     item = malloc(sizeof(struct mem_access)); */
-/*     if (!item) { */
-/*         perror("Failed to allocate a new item for hashmap\n"); */
-/*         exit(-2); */
-/*     } */
-/*     item->addr = (void *)addr; */
-/*     item->tid = tid; */
-/*     item->count = 1; */
-/*     item->next = mem_access_hashmap[hash].head; */
-/*     list->head = item; */
-/*     __atomic_fetch_add(&list->size, 1, __ATOMIC_SEQ_CST); */
-/* end: */
-/*     pthread_rwlock_unlock(&list->lock); */
-/* } */
+    bucket->path = malloc(namelen);
+    if (!bucket->path) {
+        perror("Failed to allocate hashmap bucket");
+        exit(2);
+    }
+
+    bucket->tid = tid;
+
+    snprintf(bucket->path, namelen,
+             "%s/%d",
+             stld_dir_path, tid);
+    bucket->fd = open(bucket->path, O_CREAT | O_APPEND | O_RDWR | O_TRUNC,
+                      0664);
+    if (bucket->fd == -1) {
+        perror("Failed to open file");
+        exit(-2);
+    }
+    if (truncate(bucket->path,
+                 MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access))) {
+        perror("Truncate failed");
+        exit(2);
+    }
+
+    bucket->array = mmap(NULL, MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access),
+                         PROT_READ | PROT_WRITE, MAP_SHARED, bucket->fd, 0);
+    if (bucket->array == MAP_FAILED) {
+        perror("Failed to mmap array");
+        exit(2);
+    }
+}
+
+static void mem_access_bucket_remap(struct mem_access_bucket *bucket)
+{
+    /* Unmap previous memory area */
+    if (munmap(bucket->array, MEM_ACCESS_MMAP_SIZE)) {
+        perror("munmap");
+        exit(2);
+    }
+    bucket->rounds++;
+
+    /* Map the following region in the file */
+    if (truncate(bucket->path,
+                 bucket->rounds * MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access))) {
+        perror("Re-truncate failed");
+        exit(2);
+    }
+    bucket->array = mmap(NULL, MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access),
+                         PROT_READ | PROT_WRITE, MAP_SHARED, bucket->fd,
+                         bucket->rounds * MEM_ACCESS_MMAP_SIZE * sizeof(struct mem_access));
+    if (bucket->array == MAP_FAILED) {
+        perror("Failed to remmap array");
+        exit(2);
+    }
+    bucket->count = 0;
+}
+
+static inline void mem_access_add(uint64_t addr, pid_t tid)
+{
+    int hash = tid % MEM_ACCESS_HASHMAP_SIZE;
+    struct mem_access_bucket *bucket = mem_access_hashmap + hash;
+    struct timespec ts;
+
+    if (unlikely(bucket->tid == 0)) {
+        init_mem_access_bucket(bucket, tid);
+    }
+
+    if (unlikely(bucket->tid != tid)) {
+        perror("Hashmap collision");
+        exit(2);
+    }
+
+    /* If the curent mmap is full, remap */
+    if (unlikely(bucket->count == MEM_ACCESS_MMAP_SIZE)) {
+        mem_access_bucket_remap(bucket);
+    }
+
+    /* commit the memory access to array */
+    bucket->array[bucket->count].addr = addr;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    bucket->array[bucket->count].time = ts.tv_sec * 1E9 + ts.tv_nsec;
+
+    bucket->count++;
+}
 
 static inline void trace_tcg_ldst(uint64_t addr, const char *op)
 {
     pid_t tid = syscall(SYS_gettid);
-    struct timespec ts;
 
-    /* if (unlikely(!mem_access_hashmap)) { */
-    /*     alloc_mem_access_hashmap(); */
-    /* } */
+    if (unlikely(!mem_access_hashmap)) {
+        mem_access_hashmap = alloc_mem_access_hashmap();
+    }
 
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    qemu_log_mask(LOG_ST_LD, "%ld.%ld;%d;%s;%p\n",
-                  ts.tv_sec, ts.tv_nsec, tid, op, (void *)addr);
-    /* mem_access_add(addr, tid); */
+    mem_access_add(addr, tid);
 }
 
 void HELPER(trace_tcg_st)(uint64_t addr)
@@ -273,16 +314,3 @@ void HELPER(trace_tcg_ld)(uint64_t addr)
 {
     trace_tcg_ldst(addr, "l");
 }
-
-/* void mem_access_hashmap_dump(void); */
-/* void mem_access_hashmap_dump(void) */
-/* { */
-/*     struct mem_access *item; */
-
-/*     for (int i = 0; i < MEM_ACCESS_HASHMAP_SIZE; i++) { */
-/*         for (item = mem_access_hashmap[i].head; item; item = item->next) { */
-/*             qemu_log_mask(LOG_ST_LD, "%d;%p;%lu\n", */
-/*                           item->tid, item->addr, item->count); */
-/*         } */
-/*     } */
-/* } */

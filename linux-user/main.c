@@ -393,6 +393,12 @@ static void handle_arg_trace(const char *arg)
     trace_opt_parse(arg);
 }
 
+extern const char *stld_dir_path;
+static void handle_arg_stld_dirname(const char *arg)
+{
+    stld_dir_path = arg;
+}
+
 #if defined(TARGET_XTENSA)
 static void handle_arg_abi_call0(const char *arg)
 {
@@ -460,6 +466,9 @@ static const struct qemu_argument arg_table[] = {
      "",           "Seed for pseudo-random number generator"},
     {"trace",      "QEMU_TRACE",       true,  handle_arg_trace,
      "",           "[[enable=]<pattern>][,events=<file>][,file=<file>]"},
+    {"stld-dir",   "QEMU_STLD_DIR" ,   true,  handle_arg_stld_dirname,
+     "logdir",
+     "Directory where per-thread log files will be created when logging memory accesses"},
 #ifdef CONFIG_PLUGIN
     {"plugin",     "QEMU_PLUGIN",      true,  handle_arg_plugin,
      "",           "[file=]<file>[,arg=<string>]"},
