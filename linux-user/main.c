@@ -394,8 +394,10 @@ static void handle_arg_trace(const char *arg)
 }
 
 extern const char *stld_dir_path;
+bool enable_stld = false;
 static void handle_arg_stld_dirname(const char *arg)
 {
+    enable_stld = true;
     stld_dir_path = arg;
 }
 
