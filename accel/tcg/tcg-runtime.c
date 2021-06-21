@@ -254,7 +254,7 @@ static void mem_access_bucket_remap(struct mem_access_bucket *bucket)
     bucket->rounds++;
 
     /* Map the following region in the file */
-    if (truncate(bucket->path, bucket->rounds * MEM_ACCESS_MMAP_SIZE_BYTES)) {
+    if (truncate(bucket->path, (bucket->rounds + 1) * MEM_ACCESS_MMAP_SIZE_BYTES)) {
         perror("Re-truncate failed");
         exit(2);
     }
