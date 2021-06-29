@@ -28,8 +28,9 @@ DEF_HELPER_FLAGS_1(lookup_tb_ptr, TCG_CALL_NO_WG_SE, cptr, env)
 
 DEF_HELPER_FLAGS_1(exit_atomic, TCG_CALL_NO_WG, noreturn, env)
 
-DEF_HELPER_FLAGS_1(trace_tcg_st, TCG_CALL_NO_RWG, void, i64)
-DEF_HELPER_FLAGS_1(trace_tcg_ld, TCG_CALL_NO_RWG, void, i64)
+DEF_HELPER_FLAGS_2(trace_tcg_st, TCG_CALL_NO_RWG, void, i64, env)
+DEF_HELPER_FLAGS_2(trace_tcg_ld, TCG_CALL_NO_RWG, void, i64, env)
+DEF_HELPER_FLAGS_1(trace_tcg_syscall, TCG_CALL_NO_RWG, void, env)
 
 #ifndef IN_HELPER_PROTO
 /*

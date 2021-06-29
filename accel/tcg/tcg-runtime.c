@@ -177,9 +177,16 @@ void HELPER(exit_atomic)(CPUArchState *env)
 #define MEM_ACCESS_MMAP_SIZE_NR     (1 << 26)
 #define MEM_ACCESS_MMAP_SIZE_BYTES  (MEM_ACCESS_MMAP_SIZE_NR * sizeof(struct mem_access))
 
+#define TRACE_TYPE_ST    0
+#define TRACE_TYPE_LD    1
+#define TRACE_TYPE_SCALL 2
+
 struct mem_access {
     uint64_t addr;
     uint64_t time;
+    uint64_t basic_block;
+    uint32_t type;
+    uint32_t padding;
 };
 
 struct mem_access_bucket {
@@ -265,10 +272,15 @@ static void mem_access_bucket_remap(struct mem_access_bucket *bucket)
         perror("Failed to remmap array");
         exit(2);
     }
+    qemu_log_mask(LOG_ST_LD, "%s:%d: mmap: @ %p offset: %ld (%ld bytes)\n",
+                  __func__, __LINE__,
+                  bucket->array, bucket->rounds * MEM_ACCESS_MMAP_SIZE_BYTES,
+                  MEM_ACCESS_MMAP_SIZE_BYTES);
     bucket->count = 0;
 }
 
-static inline void mem_access_add(uint64_t addr, pid_t tid)
+static inline void mem_access_add(uint64_t addr, pid_t tid,
+                                  uint64_t basic_block, uint32_t type)
 {
     int hash = tid % MEM_ACCESS_HASHMAP_SIZE;
     struct mem_access_bucket *bucket = mem_access_hashmap + hash;
@@ -292,27 +304,52 @@ static inline void mem_access_add(uint64_t addr, pid_t tid)
     bucket->array[bucket->count].addr = addr;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     bucket->array[bucket->count].time = ts.tv_sec * 1E9 + ts.tv_nsec;
+    bucket->array[bucket->count].basic_block = basic_block;
+    bucket->array[bucket->count].type = type;
 
     bucket->count++;
 }
 
-static inline void trace_tcg_ldst(uint64_t addr, const char *op)
+static inline
+void trace_tcg_ldst(uint64_t addr, uint32_t type,
+                    CPUArchState *env)
 {
     pid_t tid = syscall(SYS_gettid);
+    CPUState *cpu = env_cpu(env);
+    TranslationBlock *tb;
+    target_ulong cs_base, pc;
+    uint32_t flags;
+    uint64_t basic_block = 0;
+
+    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+
+    tb = tb_lookup(cpu, pc, cs_base, flags, curr_cflags(cpu));
+    if (!tb) {
+        qemu_log_mask(LOG_ST_LD, "%s:%d: tb @%lu does not exist\n",
+                      __func__, __LINE__, pc);
+        /* exit(2); */
+    } else {
+        basic_block = tb->pc;
+    }
 
     if (unlikely(!mem_access_hashmap)) {
         mem_access_hashmap = alloc_mem_access_hashmap();
     }
 
-    mem_access_add(addr, tid);
+    mem_access_add(addr, tid, basic_block, type);
 }
 
-void HELPER(trace_tcg_st)(uint64_t addr)
+void HELPER(trace_tcg_st)(uint64_t addr, CPUArchState *env)
 {
-    trace_tcg_ldst(addr, "s");
+    trace_tcg_ldst(addr, TRACE_TYPE_ST, env);
 }
 
-void HELPER(trace_tcg_ld)(uint64_t addr)
+void HELPER(trace_tcg_ld)(uint64_t addr, CPUArchState *env)
 {
-    trace_tcg_ldst(addr, "l");
+    trace_tcg_ldst(addr, TRACE_TYPE_LD, env);
+}
+
+void HELPER(trace_tcg_syscall)(CPUArchState *env)
+{
+    trace_tcg_ldst(0, TRACE_TYPE_SCALL, env);
 }
