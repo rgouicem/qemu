@@ -1516,4 +1516,11 @@ static inline const TCGOpcode *tcg_swap_vecop_list(const TCGOpcode *n)
 
 bool tcg_can_emit_vecop_list(const TCGOpcode *, TCGType, unsigned);
 
+
+struct bb_list_fenced {
+    uint64_t addr;
+    struct bb_list_fenced *next;
+};
+extern struct bb_list_fenced *bb_list;
+
 #endif /* TCG_H */

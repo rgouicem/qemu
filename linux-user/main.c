@@ -393,6 +393,41 @@ static void handle_arg_trace(const char *arg)
     trace_opt_parse(arg);
 }
 
+struct bb_list_fenced *bb_list;
+
+static void handle_arg_bblist(const char *arg)
+{
+    FILE *f = fopen(arg, "r");
+    char buf[128];
+
+    if (!f) {
+        perror("fopen");
+        fprintf(stderr, "fopen(%s, r)\n", arg);
+        exit(2);
+    }
+
+    while (fgets(buf, 128, f)) {
+        struct bb_list_fenced *item = malloc(sizeof(struct bb_list_fenced));
+
+        if (!item) {
+            perror("alloc failed");
+            exit(2);
+        }
+
+        if (!qemu_strtoul(buf, NULL, 10, &item->addr)) {
+            perror("qemu_strtoul failed");
+            exit(2);
+        }
+        item->next = bb_list;
+        bb_list = item;
+    }
+
+    for (struct bb_list_fenced *item = bb_list; item; item = item->next) {
+        fprintf(stderr, "bb_list: added %lu (%p)\n",
+                item->addr, (void *)item->addr);
+    }
+}
+
 #if defined(TARGET_XTENSA)
 static void handle_arg_abi_call0(const char *arg)
 {
@@ -464,6 +499,8 @@ static const struct qemu_argument arg_table[] = {
     {"plugin",     "QEMU_PLUGIN",      true,  handle_arg_plugin,
      "",           "[file=]<file>[,arg=<string>]"},
 #endif
+    {"bblist",     "BB_LIST",          true, handle_arg_bblist,
+     "",           "list of basic blocs that need fences"},
     {"version",    "QEMU_VERSION",     false, handle_arg_version,
      "",           "display version information and exit"},
 #if defined(TARGET_XTENSA)
