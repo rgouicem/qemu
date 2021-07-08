@@ -1909,11 +1909,12 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
                 "%s:%d: tb->pc=" TARGET_FMT_lx ", tb->cs_base:" TARGET_FMT_lx "\n",
                 __func__, __LINE__, tb->pc, tb->cs_base);
         tb->cflags = cflags | CF_PARALLEL;
+        tcg_ctx->tb_cflags = cflags | CF_PARALLEL;
     } else {
         tb->cflags = cflags & ~CF_PARALLEL;
+        tcg_ctx->tb_cflags = cflags & ~CF_PARALLEL;
     }
     tb->trace_vcpu_dstate = *cpu->trace_dstate;
-    tcg_ctx->tb_cflags = cflags;
  tb_overflow:
 
 #ifdef CONFIG_PROFILER
