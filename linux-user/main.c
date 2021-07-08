@@ -422,10 +422,10 @@ static void handle_arg_bblist(const char *arg)
         bb_list = item;
     }
 
-    for (struct bb_list_fenced *item = bb_list; item; item = item->next) {
-        fprintf(stderr, "bb_list: added %lu (%p)\n",
-                item->addr, (void *)item->addr);
-    }
+    /* for (struct bb_list_fenced *item = bb_list; item; item = item->next) { */
+    /*     fprintf(stderr, "bb_list: added %lu (%p)\n", */
+    /*             item->addr, (void *)item->addr); */
+    /* } */
 }
 
 #if defined(TARGET_XTENSA)
