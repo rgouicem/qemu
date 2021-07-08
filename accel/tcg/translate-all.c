@@ -1852,7 +1852,7 @@ static int is_bb_shared(target_ulong pc)
     /* } */
 
     /* fprintf(stderr, "not found\n"); */
-    return 0;
+    return 1;
 }
 
 /* Called with mmap_lock held for user mode emulation.  */
