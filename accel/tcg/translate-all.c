@@ -1840,20 +1840,20 @@ tb_link_page(TranslationBlock *tb, tb_page_addr_t phys_pc,
     return tb;
 }
 
-static int is_bb_shared(target_ulong pc)
-{
-    /* fprintf(stderr, "%s:%d: checking " TARGET_FMT_lx "...", */
-    /*         __func__, __LINE__, pc); */
-    /* for (struct bb_list_fenced *item = bb_list; item; item = item->next) { */
-    /*     if (item->addr == pc) { */
-    /*         /\* fprintf(stderr, "found\n"); *\/ */
-    /*         return 1; */
-    /*     } */
-    /* } */
+/* static int is_bb_shared(target_ulong pc) */
+/* { */
+/*     /\* fprintf(stderr, "%s:%d: checking " TARGET_FMT_lx "...", *\/ */
+/*     /\*         __func__, __LINE__, pc); *\/ */
+/*     /\* for (struct bb_list_fenced *item = bb_list; item; item = item->next) { *\/ */
+/*     /\*     if (item->addr == pc) { *\/ */
+/*     /\*         /\\* fprintf(stderr, "found\n"); *\\/ *\/ */
+/*     /\*         return 1; *\/ */
+/*     /\*     } *\/ */
+/*     /\* } *\/ */
 
-    /* fprintf(stderr, "not found\n"); */
-    return 1;
-}
+/*     /\* fprintf(stderr, "not found\n"); *\/ */
+/*     return 1; */
+/* } */
 
 /* Called with mmap_lock held for user mode emulation.  */
 TranslationBlock *tb_gen_code(CPUState *cpu,
@@ -1908,16 +1908,18 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     tb->pc = pc;
     tb->cs_base = cs_base;
     tb->flags = flags;
-    fprintf(stderr,
-            "%s:%d: tb->pc=" TARGET_FMT_lx ", tb->cs_base:" TARGET_FMT_lx "\n",
-            __func__, __LINE__, tb->pc, tb->cs_base);
-    if (is_bb_shared(tb->pc)) {
-        tb->cflags = cflags | CF_PARALLEL;
-        tcg_ctx->tb_cflags = cflags | CF_PARALLEL;
-    } else {
-        tb->cflags = cflags & ~CF_PARALLEL;
-        tcg_ctx->tb_cflags = cflags & ~CF_PARALLEL;
-    }
+    tb->cflags = cflags;
+    tcg_ctx->tb_cflags = cflags;
+    /* fprintf(stderr, */
+    /*         "%s:%d: tb->pc=" TARGET_FMT_lx ", tb->cs_base:" TARGET_FMT_lx "\n", */
+    /*         __func__, __LINE__, tb->pc, tb->cs_base); */
+    /* if (is_bb_shared(tb->pc)) { */
+    /*     tb->cflags = cflags | CF_PARALLEL; */
+    /*     tcg_ctx->tb_cflags = cflags | CF_PARALLEL; */
+    /* } else { */
+    /*     tb->cflags = cflags & ~CF_PARALLEL; */
+    /*     tcg_ctx->tb_cflags = cflags & ~CF_PARALLEL; */
+    /* } */
     tb->trace_vcpu_dstate = *cpu->trace_dstate;
  tb_overflow:
 
