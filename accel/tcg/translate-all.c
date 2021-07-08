@@ -1908,10 +1908,10 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     tb->pc = pc;
     tb->cs_base = cs_base;
     tb->flags = flags;
+    fprintf(stderr,
+            "%s:%d: tb->pc=" TARGET_FMT_lx ", tb->cs_base:" TARGET_FMT_lx "\n",
+            __func__, __LINE__, tb->pc, tb->cs_base);
     if (is_bb_shared(tb->pc)) {
-        /* fprintf(stderr, */
-        /*         "%s:%d: tb->pc=" TARGET_FMT_lx ", tb->cs_base:" TARGET_FMT_lx "\n", */
-        /*         __func__, __LINE__, tb->pc, tb->cs_base); */
         tb->cflags = cflags | CF_PARALLEL;
         tcg_ctx->tb_cflags = cflags | CF_PARALLEL;
     } else {
