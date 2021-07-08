@@ -440,6 +440,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 
     if ((cflags & CF_PARALLEL) && !is_bb_shared(pc)) {
         cflags = cflags & ~CF_PARALLEL;
+        flags = flags & ~CF_PARALLEL;
     }
 
     tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
