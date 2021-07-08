@@ -440,6 +440,8 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 
     if (!is_bb_shared(pc)) {
         cflags = cflags & ~CF_PARALLEL;
+        fprintf(stderr, "%s:%d: pc=" TARGET_FMT_lx " no fence\n",
+                __func__, __LINE__, pc);
     }
 
     tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
