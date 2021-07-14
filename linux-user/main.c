@@ -423,8 +423,8 @@ static void handle_arg_bblist(const char *arg)
     }
 
     for (struct bb_list_fenced *item = bb_list; item; item = item->next) {
-        fprintf(stderr, "bb_list: added %lu (%p)\n",
-                item->addr, (void *)item->addr);
+        fprintf(stderr, "bb_list: added %lu (%p) -> hash: %d\n",
+                item->addr, (void *)item->addr, item->addr % 128);
     }
 }
 
