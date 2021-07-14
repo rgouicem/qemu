@@ -1521,6 +1521,7 @@ struct bb_list_fenced {
     uint64_t addr;
     struct bb_list_fenced *next;
 };
-extern struct bb_list_fenced *bb_list;
+extern struct bb_list_fenced **bb_list;
+#define BBLIST_SIZE 256
 
 #endif /* TCG_H */

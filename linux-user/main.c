@@ -393,7 +393,7 @@ static void handle_arg_trace(const char *arg)
     trace_opt_parse(arg);
 }
 
-struct bb_list_fenced *bb_list;
+struct bb_list_fenced **bb_list;
 
 static void handle_arg_bblist(const char *arg)
 {
@@ -403,6 +403,12 @@ static void handle_arg_bblist(const char *arg)
     if (!f) {
         perror("fopen");
         fprintf(stderr, "fopen(%s, r)\n", arg);
+        exit(2);
+    }
+
+    bb_list = malloc(BBLIST_SIZE * sizeof(struct bb_list_fenced *));
+    if (!bb_list) {
+        perror("alloc bblist failed\n");
         exit(2);
     }
 
@@ -418,13 +424,15 @@ static void handle_arg_bblist(const char *arg)
             perror("qemu_strtoul failed");
             exit(2);
         }
-        item->next = bb_list;
-        bb_list = item;
+        item->next = bb_list[item->addr % BBLIST_SIZE];
+        bb_list[item->addr % BBLIST_SIZE] = item;
     }
 
-    for (struct bb_list_fenced *item = bb_list; item; item = item->next) {
-        fprintf(stderr, "bb_list: added %lu (%p) -> hash: %ld\n",
-                item->addr, (void *)item->addr, item->addr % 256);
+    for (int i = 0; i < BBLIST_SIZE; i++) {
+        for (struct bb_list_fenced *item = bb_list[i]; item; item = item->next) {
+            fprintf(stderr, "bb_list: added %lu (%p) -> hash: %ld [%d]\n",
+                    item->addr, (void *)item->addr, item->addr % 256, i);
+        }
     }
 }
 

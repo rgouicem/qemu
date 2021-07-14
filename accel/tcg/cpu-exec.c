@@ -412,11 +412,12 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
     return;
 }
 
-static int is_bb_shared(target_ulong pc)
+static inline int is_bb_shared(target_ulong pc)
 {
     /* fprintf(stderr, "%s:%d: checking " TARGET_FMT_lx "...", */
     /*         __func__, __LINE__, pc); */
-    for (struct bb_list_fenced *item = bb_list; item; item = item->next) {
+    for (struct bb_list_fenced *item = bb_list[pc % BBLIST_SIZE];
+         item; item = item->next) {
         if (item->addr == pc) {
             /* fprintf(stderr, "found\n"); */
             return 1;
