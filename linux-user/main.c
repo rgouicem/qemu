@@ -428,12 +428,12 @@ static void handle_arg_bblist(const char *arg)
         bb_list[item->addr % BBLIST_SIZE] = item;
     }
 
-    for (int i = 0; i < BBLIST_SIZE; i++) {
-        for (struct bb_list_fenced *item = bb_list[i]; item; item = item->next) {
-            fprintf(stderr, "bb_list: added %lu (%p) -> hash: %ld [%d]\n",
-                    item->addr, (void *)item->addr, item->addr % 256, i);
-        }
-    }
+    /* for (int i = 0; i < BBLIST_SIZE; i++) { */
+    /*     for (struct bb_list_fenced *item = bb_list[i]; item; item = item->next) { */
+    /*         fprintf(stderr, "bb_list: added %lu (%p) -> hash: %ld [%d]\n", */
+    /*                 item->addr, (void *)item->addr, item->addr % 256, i); */
+    /*     } */
+    /* } */
 }
 
 #if defined(TARGET_XTENSA)
