@@ -414,18 +414,19 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
 
 static inline int is_bb_shared(target_ulong pc)
 {
-    /* fprintf(stderr, "%s:%d: checking " TARGET_FMT_lx "...", */
-    /*         __func__, __LINE__, pc); */
-    for (struct bb_list_fenced *item = bb_list[pc % BBLIST_SIZE];
-         item; item = item->next) {
-        if (item->addr == pc) {
-            /* fprintf(stderr, "found\n"); */
-            return 1;
-        }
-    }
+    /* /\* fprintf(stderr, "%s:%d: checking " TARGET_FMT_lx "...", *\/ */
+    /* /\*         __func__, __LINE__, pc); *\/ */
+    /* for (struct bb_list_fenced *item = bb_list[pc % BBLIST_SIZE]; */
+    /*      item; item = item->next) { */
+    /*     if (item->addr == pc) { */
+    /*         /\* fprintf(stderr, "found\n"); *\/ */
+    /*         return 1; */
+    /*     } */
+    /* } */
 
-    /* fprintf(stderr, "not found\n"); */
-    return 0;
+    /* /\* fprintf(stderr, "not found\n"); *\/ */
+    /* return 0; */
+    return 1;
 }
 
 static inline TranslationBlock *tb_find(CPUState *cpu,
