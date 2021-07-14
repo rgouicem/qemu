@@ -426,7 +426,7 @@ static inline int is_bb_shared(target_ulong pc)
 
     /* /\* fprintf(stderr, "not found\n"); *\/ */
     /* return 0; */
-    return 0;
+    return 1;
 }
 
 static inline TranslationBlock *tb_find(CPUState *cpu,
@@ -440,11 +440,11 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
 
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
 
-    /* if (!is_bb_shared(pc)) { */
-    /*     cflags = cflags & ~CF_PARALLEL; */
-    /*     /\* fprintf(stderr, "%s:%d: pc=" TARGET_FMT_lx " no fence\n", *\/ */
-    /*     /\*         __func__, __LINE__, pc); *\/ */
-    /* } */
+    if (!is_bb_shared(pc)) {
+        cflags = cflags & ~CF_PARALLEL;
+        /* fprintf(stderr, "%s:%d: pc=" TARGET_FMT_lx " no fence\n", */
+        /*         __func__, __LINE__, pc); */
+    }
 
     tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
     if (tb == NULL) {
