@@ -425,8 +425,8 @@ static inline int is_bb_shared(target_ulong pc)
     /* } */
 
     /* /\* fprintf(stderr, "not found\n"); *\/ */
-    /* return 0; */
-    return 1;
+    return 0;
+    /* return 1; */
 }
 
 static inline TranslationBlock *tb_find(CPUState *cpu,
