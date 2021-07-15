@@ -6491,10 +6491,10 @@ static int do_fork(CPUArchState *env, unsigned int flags, abi_ulong newsp,
          * generate code for parallel execution and flush old translations.
          * Do this now so that the copy gets CF_PARALLEL too.
          */
-        if (!(cpu->tcg_cflags & CF_PARALLEL)) {
-            cpu->tcg_cflags |= CF_PARALLEL;
-            tb_flush(cpu);
-        }
+        /* if (!(cpu->tcg_cflags & CF_PARALLEL)) { */
+        /*     cpu->tcg_cflags |= CF_PARALLEL; */
+        /*     tb_flush(cpu); */
+        /* } */
 
         /* we create a new CPU instance. */
         new_env = cpu_copy(env);

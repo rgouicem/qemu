@@ -442,8 +442,8 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     fprintf(stderr, "%s:%d: pc=" TARGET_FMT_lx " no fence\n",
             __func__, __LINE__, pc);
 
-    if (!is_bb_shared(pc)) {
-        cflags = cflags & ~CF_PARALLEL;
+    if (is_bb_shared(pc)) {
+        cflags = cflags | CF_PARALLEL;
         /* fprintf(stderr, "%s:%d: pc=" TARGET_FMT_lx " no fence\n", */
         /*         __func__, __LINE__, pc); */
     }
