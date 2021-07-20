@@ -446,7 +446,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     /*         pc, !(!(cflags & CF_PARALLEL)), !(!(flags & CF_PARALLEL))); */
 
     /* if (is_bb_shared(pc)) { */
-    if (1) {
+    if (0) {
         cflags = cflags | CF_REDHA;
         /* fprintf(stderr, "%s:%d: pc=" TARGET_FMT_lx " no fence\n", */
         /*         __func__, __LINE__, pc); */
