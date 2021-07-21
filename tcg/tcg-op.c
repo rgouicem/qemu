@@ -2824,7 +2824,7 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, MemOp memop)
     uint16_t info = trace_mem_get_info(memop, idx, 0);
 
     if (tcg_ctx->tb_cflags & CF_REDHA) {
-        fprintf(stderr, "%s:%d: generating fence\n",
+        qemu_log_mask(CPU_LOG_TB_OP, "%s:%d: generating fence\n",
                 __func__, __LINE__);
         tcg_gen_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD);
     }
@@ -2867,7 +2867,7 @@ void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, MemOp memop)
     uint16_t info = trace_mem_get_info(memop, idx, 1);
 
     if (tcg_ctx->tb_cflags & CF_REDHA) {
-        fprintf(stderr, "%s:%d: generating fence\n",
+        qemu_log_mask(CPU_LOG_TB_OP, "%s:%d: generating fence\n",
                 __func__, __LINE__);
         tcg_gen_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     }
@@ -2920,7 +2920,7 @@ void tcg_gen_qemu_ld_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
     }
 
     if (tcg_ctx->tb_cflags & CF_REDHA) {
-        fprintf(stderr, "%s:%d: generating fence\n",
+        qemu_log_mask(CPU_LOG_TB_OP, "%s:%d: generating fence\n",
                 __func__, __LINE__);
         tcg_gen_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD);
     }
@@ -2975,7 +2975,7 @@ void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
     }
 
     if (tcg_ctx->tb_cflags & CF_REDHA) {
-        fprintf(stderr, "%s:%d: generating fence\n",
+        qemu_log_mask(CPU_LOG_TB_OP, "%s:%d: generating fence\n",
                 __func__, __LINE__);
         tcg_gen_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     }
