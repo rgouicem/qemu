@@ -2975,8 +2975,8 @@ void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
     }
 
     if (tcg_ctx->tb_cflags & CF_REDHA) {
-        qemu_log_mask(CPU_LOG_TB_OP, "%s:%d: generating fence\n",
-                __func__, __LINE__);
+        fprintf(stderr, "%s:%d: generating fence at %lx\n",
+                __func__, __LINE__, tcg_ctx->frame_start);
         tcg_gen_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST);
     }
     memop = tcg_canonicalize_memop(memop, 1, 1);
