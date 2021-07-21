@@ -446,7 +446,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     /*         pc, !(!(cflags & CF_PARALLEL)), !(!(flags & CF_PARALLEL))); */
 
     /* if (is_bb_shared(pc)) { */
-    if (0) {
+    if (1) {
         cflags = cflags | CF_REDHA;
         /* fprintf(stderr, "%s:%d: pc=" TARGET_FMT_lx " no fence\n", */
         /*         __func__, __LINE__, pc); */
@@ -473,7 +473,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     if (last_tb) {
         tb_add_jump(last_tb, tb_exit, tb);
     }
-    return tb;
+    return tb; 
 }
 
 static inline bool cpu_handle_halt(CPUState *cpu)
