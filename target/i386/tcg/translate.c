@@ -7316,7 +7316,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
 #ifdef TARGET_X86_64
     case 0x105: /* syscall */
         /* XXX: is it usable in real mode ? */
-        gen_helper_trace_tcg_syscall(cpu_env);
+        if (tcg_ctx->tb_cflags & CF_PARALLEL) {
+            gen_helper_trace_tcg_syscall(cpu_env);
+        }
         gen_update_cc_op(s);
         gen_jmp_im(s, pc_start - s->cs_base);
         gen_helper_syscall(cpu_env, tcg_const_i32(s->pc - pc_start));

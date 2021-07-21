@@ -2857,7 +2857,7 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, MemOp memop)
         }
     }
 
-    if (enable_stld) {
+    if (enable_stld && (tcg_ctx->tb_cflags & CF_PARALLEL)) {
         gen_helper_trace_tcg_ld(addr, cpu_env);
     }
 }
@@ -2899,7 +2899,7 @@ void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, MemOp memop)
     if (swap) {
         tcg_temp_free_i32(swap);
     }
-    if (enable_stld) {
+    if (enable_stld && (tcg_ctx->tb_cflags & CF_PARALLEL)) {
         gen_helper_trace_tcg_st(addr, cpu_env);
     }
 }
@@ -2959,7 +2959,7 @@ void tcg_gen_qemu_ld_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
         }
     }
 
-    if (enable_stld) {
+    if (enable_stld && (tcg_ctx->tb_cflags & CF_PARALLEL)) {
         gen_helper_trace_tcg_ld(addr, cpu_env);
     }
 }
@@ -3008,7 +3008,7 @@ void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, MemOp memop)
         tcg_temp_free_i64(swap);
     }
 
-    if (enable_stld) {
+    if (enable_stld && (tcg_ctx->tb_cflags & CF_PARALLEL)) {
         gen_helper_trace_tcg_st(addr, cpu_env);
     }
 }
