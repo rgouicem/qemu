@@ -475,7 +475,7 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     if (last_tb) {
         tb_add_jump(last_tb, tb_exit, tb);
     }
-    return tb; 
+    return tb;
 }
 
 static inline bool cpu_handle_halt(CPUState *cpu)
