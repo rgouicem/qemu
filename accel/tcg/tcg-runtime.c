@@ -177,16 +177,19 @@ void HELPER(exit_atomic)(CPUArchState *env)
 #define MEM_ACCESS_MMAP_SIZE_NR     (1 << 22)
 #define MEM_ACCESS_MMAP_SIZE_BYTES  (MEM_ACCESS_MMAP_SIZE_NR * sizeof(struct mem_access))
 
-#define TRACE_TYPE_ST    0
-#define TRACE_TYPE_LD    1
-#define TRACE_TYPE_SCALL 2
+/* #define TRACE_TYPE_ST    0 */
+/* #define TRACE_TYPE_LD    1 */
+/* #define TRACE_TYPE_SCALL 2 */
+
+#define TRACE_TYPE_STLD   0xFFFFFFFE
+#define TRACE_TYPE_SCALL  0xFFFFFFFF
 
 struct mem_access {
     uint64_t addr;
     uint64_t time;
     uint64_t basic_block;
-    uint32_t type;
-    uint32_t padding;
+    /* uint32_t type; */
+    /* uint32_t padding; */
 };
 
 struct mem_access_bucket {
@@ -304,8 +307,9 @@ static inline void mem_access_add(uint64_t addr, pid_t tid,
     bucket->array[bucket->count].addr = addr;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     bucket->array[bucket->count].time = ts.tv_sec * 1E9 + ts.tv_nsec;
+    bucket->array[bucket->count].time &= type;
     bucket->array[bucket->count].basic_block = basic_block;
-    bucket->array[bucket->count].type = type;
+    /* bucket->array[bucket->count].type = type; */
 
     bucket->count++;
 }
@@ -341,12 +345,12 @@ void trace_tcg_ldst(uint64_t addr, uint32_t type,
 
 void HELPER(trace_tcg_st)(uint64_t addr, CPUArchState *env)
 {
-    trace_tcg_ldst(addr, TRACE_TYPE_ST, env);
+    trace_tcg_ldst(addr, TRACE_TYPE_STLD, env);
 }
 
 void HELPER(trace_tcg_ld)(uint64_t addr, CPUArchState *env)
 {
-    trace_tcg_ldst(addr, TRACE_TYPE_LD, env);
+    trace_tcg_ldst(addr, TRACE_TYPE_STLD, env);
 }
 
 void HELPER(trace_tcg_syscall)(CPUArchState *env)
