@@ -174,7 +174,7 @@ void HELPER(exit_atomic)(CPUArchState *env)
 }
 
 #define MEM_ACCESS_HASHMAP_SIZE     128
-#define MEM_ACCESS_MMAP_SIZE_NR     (1 << 26)
+#define MEM_ACCESS_MMAP_SIZE_NR     (1 << 22)
 #define MEM_ACCESS_MMAP_SIZE_BYTES  (MEM_ACCESS_MMAP_SIZE_NR * sizeof(struct mem_access))
 
 #define TRACE_TYPE_ST    0
