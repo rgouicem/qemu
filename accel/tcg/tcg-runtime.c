@@ -307,7 +307,6 @@ static inline void mem_access_add(uint64_t addr, pid_t tid,
     bucket->array[bucket->count].addr = addr;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     bucket->array[bucket->count].time = ts.tv_sec * 1E9 + ts.tv_nsec;
-    bucket->array[bucket->count].time &= type;
     bucket->array[bucket->count].basic_block = basic_block;
     /* bucket->array[bucket->count].type = type; */
 
