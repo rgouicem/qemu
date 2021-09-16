@@ -294,7 +294,8 @@ static inline void mem_access_add(uint64_t addr, pid_t tid,
     }
 
     if (unlikely(bucket->tid != tid)) {
-        perror("Hashmap collision");
+        fprintf(stderr, "Hashmap collision [%d != %d] (size=%d)\n",
+                tid, bucket->tid, MEM_ACCESS_HASHMAP_SIZE);
         exit(2);
     }
 
