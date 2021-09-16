@@ -173,7 +173,7 @@ void HELPER(exit_atomic)(CPUArchState *env)
     cpu_loop_exit_atomic(env_cpu(env), GETPC());
 }
 
-#define MEM_ACCESS_HASHMAP_SIZE     128
+#define MEM_ACCESS_HASHMAP_SIZE     1024
 #define MEM_ACCESS_MMAP_SIZE_NR     (1 << 22)
 #define MEM_ACCESS_MMAP_SIZE_BYTES  (MEM_ACCESS_MMAP_SIZE_NR * sizeof(struct mem_access))
 
