@@ -32,6 +32,8 @@
 
 #include "exec/log.h"
 
+#include "native-lib.h"
+
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
 #define PREFIX_LOCK   0x04
@@ -8715,11 +8717,118 @@ static void i386_tr_disas_log(const DisasContextBase *dcbase,
     log_target_disas(cpu, dc->base.pc_first, dc->base.tb->size);
 }
 
+static TCGTemp *gen_nlib_call_arg(DisasContext *s, int idx, const nlib_type *t)
+{
+    switch (t->tc) {
+    case NLTC_SINT:
+    case NLTC_UINT:
+    case NLTC_STRING:
+    case NLTC_MEMPTR:
+    case NLTC_CPLX:
+        return tcgv_i64_temp(cpu_regs[idx]);
+
+    case NLTC_FLOAT:
+        return tcgv_vec_temp(cpu_fregs[idx]);
+
+    default:
+        fprintf(stderr, "nlib: unsupported arg type\n");
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+static void gen_nlib_call(DisasContext *s, const nlib_function *fn)
+{
+    int gpri = 0, fpri = 0;
+
+    // Prepare the return value
+    TCGTemp *retval;
+    if (fn->retty.tc == NLTC_VOID) {
+        retval = NULL;
+    } else if (fn->retty.tc == NLTC_CPLX) {
+        fprintf(stderr, "nlib: unsupported complex return type\n");
+        exit(1);
+    } else {
+        retval = gen_nlib_call_arg(s, R_EAX, &fn->retty);
+    }
+
+    // Prepare function arguments
+    TCGTemp *args[fn->nr_args];
+
+    int gregs[] = { R_EDI, R_ESI, R_EDX, R_ECX, R_R8, R_R9 };
+    int fregs[] = { R_XMM0, R_XMM1, R_XMM2, R_XMM3, R_XMM4, R_XMM5, R_XMM6, R_XMM7 };
+
+    int sslot = 0, kind = 0;
+
+    TCGv_i64 stack_args[8];
+
+    // Marshal the arguments!
+    for (int i = 0; i < fn->nr_args; i++) {
+        int reg;
+        if (fn->argty[i].tc == NLTC_FLOAT) { // Classify this argument as a floating-point
+            if (fpri < 8) { // If there are floating-point registers still available, grab one.
+                kind = 0; // REG
+                reg = fregs[fpri++];
+            } else { // Otherwise, indicate that this argument is on the stack.
+                kind = 1; // STK
+            }
+        } else { // Classify this argument as another type
+            if (gpri < 6) { // If there are GP registers still available, grab one.
+                kind = 0; //REG
+                reg = gregs[gpri++];
+            } else { // Otherwise, indicate that this argument is on the stack.
+                kind = 1; // STK
+            }
+        }
+
+        if (kind == 0) { // If this is a REGISTER kind argument, load it from a register.
+            args[i] = gen_nlib_call_arg(s, reg, &fn->argty[i]);
+        } else { // If this is a STACK kind argument, reference it from the guest stack.
+            // sslot contains the current stack slot for this argument.  Offset is sslot * 8
+
+            // arg is @ (8+(8 * sslot))(%rsp)
+
+            TCGv_i64 arg = tcg_temp_new_i64();
+            stack_args[sslot] = arg;
+
+            tcg_gen_add_i64(arg, cpu_regs[R_ESP], tcg_const_i64((8 * sslot) + 8));
+            gen_op_ld_v(s, MO_64, arg, arg);
+
+            args[i] = tcgv_i64_temp(arg);
+
+            sslot++;
+        }
+    }
+
+    // Generate the call instruction
+    tcg_gen_callN(fn->fnptr, retval, fn->nr_args, args);
+
+    for (int i = 0; i < sslot; i++) {
+        tcg_temp_free_i64(stack_args[i]);
+    }
+
+    // TODO: stack arg writeback?
+}
+
+static void i386_tr_translate_nlib_call(DisasContextBase *dcbase, CPUState *cpu, void *fn)
+{
+    DisasContext *dc = container_of(dcbase, DisasContext, base);
+    gen_nlib_call(dc, (nlib_function *)fn);
+
+    MemOp ot = gen_pop_T0(dc);
+    gen_pop_update(dc, ot);
+    /* Note that gen_pop_T0 uses a zero-extending load.  */
+    gen_op_jmp_v(dc->T0);
+    gen_bnd_jmp(dc);
+    gen_jr(dc, dc->T0);
+}
+
 static const TranslatorOps i386_tr_ops = {
     .init_disas_context = i386_tr_init_disas_context,
     .tb_start           = i386_tr_tb_start,
     .insn_start         = i386_tr_insn_start,
     .translate_insn     = i386_tr_translate_insn,
+    .translate_nlib_call = i386_tr_translate_nlib_call,
     .tb_stop            = i386_tr_tb_stop,
     .disas_log          = i386_tr_disas_log,
 };
