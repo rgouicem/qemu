@@ -66,6 +66,13 @@ static const int tcg_target_call_oarg_regs[1] = {
     TCG_REG_X0
 };
 
+static const int tcg_target_call_iarg_regs_fp[8] = {
+    TCG_REG_V0, TCG_REG_V1, TCG_REG_V2, TCG_REG_V3
+};
+static const int tcg_target_call_oarg_regs_fp[1] = {
+    TCG_REG_V0
+};
+
 #define TCG_REG_TMP TCG_REG_X30
 #define TCG_VEC_TMP TCG_REG_V31
 
