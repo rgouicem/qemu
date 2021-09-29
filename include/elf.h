@@ -1737,6 +1737,7 @@ struct elf32_fdpic_loadmap {
 #define elf_sym		elf32_sym
 #define elf_addr_t	Elf32_Off
 #define elf_rela  elf32_rela
+#define ELF_R_SYM ELF32_R_SYM
 
 #ifdef ELF_USES_RELOCA
 # define ELF_RELOC      Elf32_Rela
@@ -1753,6 +1754,7 @@ struct elf32_fdpic_loadmap {
 #define elf_sym		elf64_sym
 #define elf_addr_t	Elf64_Off
 #define elf_rela  elf64_rela
+#define ELF_R_SYM ELF64_R_SYM
 
 #ifdef ELF_USES_RELOCA
 # define ELF_RELOC      Elf64_Rela
