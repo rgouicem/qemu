@@ -1447,6 +1447,13 @@ bool tcg_op_supported(TCGOpcode op)
     }
 }
 
+static TCGHelperInfo nlib_dummy_helper_info = {
+    .func = NULL,
+    .name = "nlib-dummy",
+    .flags = 0,
+    .typemask = 0
+};
+
 /* Note: we convert the 64 bit args to 32 bit and do some alignment
    and endian swap. Maybe it would be better to do the alignment
    and endian swap in tcg_reg_alloc_call(). */
@@ -1458,6 +1465,11 @@ void tcg_gen_callN(void *func, TCGTemp *ret, int nargs, TCGTemp **args)
     TCGOp *op;
 
     info = g_hash_table_lookup(helper_table, (gpointer)func);
+
+    if (!info) {
+        info = &nlib_dummy_helper_info;
+    }
+
     typemask = info->typemask;
 
 #ifdef CONFIG_PLUGIN

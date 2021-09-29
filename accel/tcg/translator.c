@@ -74,6 +74,14 @@ void translator_loop(const TranslatorOps *ops, DisasContextBase *db,
     nlib_function *nfn = nlib_get_txln_hook(tb->pc);
     if (ops->translate_nlib_call && nfn) {
         ops->translate_nlib_call(db, cpu, nfn);
+
+        /* Emit code to exit the TB, as indicated by db->is_jmp.  */
+        ops->tb_stop(db, cpu);
+        gen_tb_end(db->tb, 1);
+
+            /* The disas_log hook may use these values rather than recompute.  */
+        tb->size = 4;
+        tb->icount = 1;
     } else {
         while (true) {
             db->num_insns++;
@@ -118,19 +126,19 @@ void translator_loop(const TranslatorOps *ops, DisasContextBase *db,
                 break;
             }
         }
-    }
 
-    /* Emit code to exit the TB, as indicated by db->is_jmp.  */
-    ops->tb_stop(db, cpu);
-    gen_tb_end(db->tb, db->num_insns);
+        /* Emit code to exit the TB, as indicated by db->is_jmp.  */
+        ops->tb_stop(db, cpu);
+        gen_tb_end(db->tb, db->num_insns);
+
+        /* The disas_log hook may use these values rather than recompute.  */
+        tb->size = db->pc_next - db->pc_first;
+        tb->icount = db->num_insns;
+    }
 
     if (plugin_enabled) {
         plugin_gen_tb_end(cpu);
     }
-
-    /* The disas_log hook may use these values rather than recompute.  */
-    tb->size = db->pc_next - db->pc_first;
-    tb->icount = db->num_insns;
 
 #ifdef DEBUG_DISAS
     if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)
