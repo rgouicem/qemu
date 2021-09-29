@@ -43,7 +43,7 @@
 #else
 #define MAX_OPC_PARAM_PER_ARG 1
 #endif
-#define MAX_OPC_PARAM_IARGS 6
+#define MAX_OPC_PARAM_IARGS 16
 #define MAX_OPC_PARAM_OARGS 1
 #define MAX_OPC_PARAM_ARGS (MAX_OPC_PARAM_IARGS + MAX_OPC_PARAM_OARGS)
 
@@ -896,6 +896,13 @@ static inline TCGv_i64 tcg_global_mem_new_i64(TCGv_ptr reg, intptr_t offset,
 {
     TCGTemp *t = tcg_global_mem_new_internal(TCG_TYPE_I64, reg, offset, name);
     return temp_tcgv_i64(t);
+}
+
+static inline TCGv_vec tcg_global_mem_new_vec(TCGv_ptr reg, intptr_t offset,
+                                              const char *name)
+{
+    TCGTemp *t = tcg_global_mem_new_internal(TCG_TYPE_V128, reg, offset, name);
+    return temp_tcgv_vec(t);
 }
 
 static inline TCGv_i64 tcg_temp_new_i64(void)
