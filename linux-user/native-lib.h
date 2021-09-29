@@ -35,6 +35,7 @@ typedef struct
 } nlib_function;
 
 void nlib_init(void);
+void nlib_load_idl(const char *idlfile);
 nlib_function *nlib_add_function(const char *fname, const char *libname);
 nlib_function *nlib_lookup_function(unsigned int idx);
 void nlib_fn_set_ret(nlib_function *fn, nlib_type_class tc, int width, int cnst);
