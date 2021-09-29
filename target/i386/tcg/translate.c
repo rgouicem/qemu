@@ -66,6 +66,7 @@
 static TCGv cpu_cc_dst, cpu_cc_src, cpu_cc_src2;
 static TCGv_i32 cpu_cc_op;
 static TCGv cpu_regs[CPU_NB_REGS];
+static TCGv_vec cpu_fregs[CPU_NB_XMM_REGS];
 static TCGv cpu_seg_base[6];
 static TCGv_i64 cpu_bndl[4];
 static TCGv_i64 cpu_bndu[4];
@@ -1723,7 +1724,7 @@ static void gen_rot_rm_T1(DisasContext *s, MemOp ot, int op1, int is_right)
     tcg_temp_free_i32(t0);
     tcg_temp_free_i32(t1);
 
-    /* The CC_OP value is no longer predictable.  */ 
+    /* The CC_OP value is no longer predictable.  */
     set_cc_op(s, CC_OP_DYNAMIC);
 }
 
@@ -1816,7 +1817,7 @@ static void gen_rotc_rm_T1(DisasContext *s, MemOp ot, int op1,
         gen_op_ld_v(s, ot, s->T0, s->A0);
     else
         gen_op_mov_v_reg(s, ot, s->T0, op1);
-    
+
     if (is_right) {
         switch (ot) {
         case MO_8:
@@ -5424,7 +5425,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 set_cc_op(s, CC_OP_EFLAGS);
                 break;
             }
-#endif        
+#endif
             if (!(s->cpuid_features & CPUID_CX8)) {
                 goto illegal_op;
             }
@@ -8501,6 +8502,24 @@ void tcg_x86_init(void)
         [R_ESP] = "esp",
 #endif
     };
+    static const char xmm_reg_names[CPU_NB_XMM_REGS][5] = {
+        [R_XMM0] = "xmm0",
+        [R_XMM1] = "xmm1",
+        [R_XMM2] = "xmm2",
+        [R_XMM3] = "xmm3",
+        [R_XMM4] = "xmm4",
+        [R_XMM5] = "xmm5",
+        [R_XMM6] = "xmm6",
+        [R_XMM7] = "xmm7",
+        [R_XMM8] = "xmm8",
+        [R_XMM9] = "xmm9",
+        [R_XMM10] = "xmm10",
+        [R_XMM11] = "xmm11",
+        [R_XMM12] = "xmm12",
+        [R_XMM13] = "xmm13",
+        [R_XMM14] = "xmm14",
+        [R_XMM15] = "xmm15",
+    };
     static const char seg_base_names[6][8] = {
         [R_CS] = "cs_base",
         [R_DS] = "ds_base",
@@ -8530,6 +8549,12 @@ void tcg_x86_init(void)
         cpu_regs[i] = tcg_global_mem_new(cpu_env,
                                          offsetof(CPUX86State, regs[i]),
                                          reg_names[i]);
+    }
+
+    for (i = 0; i < CPU_NB_XMM_REGS; ++i) {
+        cpu_fregs[i] = tcg_global_mem_new_vec(cpu_env,
+                                         offsetof(CPUX86State, xmm_regs[i]),
+                                         xmm_reg_names[i]);
     }
 
     for (i = 0; i < 6; ++i) {

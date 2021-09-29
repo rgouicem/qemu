@@ -71,6 +71,25 @@ enum {
     R_BH = 7,
 };
 
+enum {
+    R_XMM0 = 0,
+    R_XMM1 = 1,
+    R_XMM2 = 2,
+    R_XMM3 = 3,
+    R_XMM4 = 4,
+    R_XMM5 = 5,
+    R_XMM6 = 6,
+    R_XMM7 = 7,
+    R_XMM8 = 8,
+    R_XMM9 = 9,
+    R_XMM10 = 10,
+    R_XMM11 = 11,
+    R_XMM12 = 12,
+    R_XMM13 = 13,
+    R_XMM14 = 14,
+    R_XMM15 = 15
+};
+
 typedef enum X86Seg {
     R_ES = 0,
     R_CS = 1,
@@ -1244,8 +1263,10 @@ typedef struct {
 
 #ifdef TARGET_X86_64
 #define CPU_NB_REGS CPU_NB_REGS64
+#define CPU_NB_XMM_REGS CPU_NB_REGS64
 #else
 #define CPU_NB_REGS CPU_NB_REGS32
+#define CPU_NB_XMM_REGS CPU_NB_REGS32
 #endif
 
 #define MAX_FIXED_COUNTERS 3
@@ -1463,7 +1484,7 @@ typedef struct CPUX86State {
     float_status mmx_status; /* for 3DNow! float ops */
     float_status sse_status;
     uint32_t mxcsr;
-    ZMMReg xmm_regs[CPU_NB_REGS == 8 ? 8 : 32];
+    ZMMReg xmm_regs[CPU_NB_XMM_REGS];
     ZMMReg xmm_t0;
     MMXReg mmx_t0;
 
