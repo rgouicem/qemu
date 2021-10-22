@@ -94,6 +94,10 @@ void tcg_gen_op6(TCGOpcode opc, TCGArg a1, TCGArg a2, TCGArg a3,
     op->args[5] = a6;
 }
 
+void tcg_gen_cas(TCGv cmpv, TCGv newv, TCGv addr){
+    tcg_gen_op3(INDEX_op_cas, cmpv, newv, addr);
+}
+
 void tcg_gen_mb(TCGBar mb_type)
 {
     if (tcg_ctx->tb_cflags & CF_PARALLEL) {

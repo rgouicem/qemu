@@ -42,6 +42,9 @@ DEF(br, 0, 0, 1, TCG_OPF_BB_END)
 # define IMPL64  TCG_OPF_64BIT
 #endif
 
+#define TCG_TARGET_HAS_cas 1
+DEF(cas, 1, 2, 1, IMPL(TCG_TARGET_HAS_cas))
+
 DEF(mb, 0, 0, 1, 0)
 
 DEF(mov_i32, 1, 1, 0, TCG_OPF_NOT_PRESENT)

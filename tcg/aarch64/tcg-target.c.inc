@@ -599,6 +599,11 @@ typedef enum {
     DMB_ISH         = 0xd50338bf,
     DMB_LD          = 0x00000100,
     DMB_ST          = 0x00000200,
+
+    /* CAS instructions. */
+    CASAL32         = 0x88e0fc00,
+
+
 } AArch64Insn;
 
 static inline uint32_t tcg_in32(TCGContext *s)
@@ -1331,6 +1336,10 @@ static void tcg_out_goto_long(TCGContext *s, const tcg_insn_unit *target)
         tcg_out_movi(s, TCG_TYPE_I64, TCG_REG_TMP, (intptr_t)target);
         tcg_out_insn(s, 3207, BR, TCG_REG_TMP);
     }
+}
+
+static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg, TCGReg addrreg){
+    tcg_out32(s, CASAL32 | cmpreg << 16 | writereg << 4 | addrreg);
 }
 
 static inline void tcg_out_callr(TCGContext *s, TCGReg reg)
@@ -2245,6 +2254,10 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc,
 
     case INDEX_op_mb:
         tcg_out_mb(s, a0);
+        break;
+
+    case INDEX_op_cas:
+        tcg_out_cas(s, a0, a1, a2);
         break;
 
     case INDEX_op_mov_i32:  /* Always emitted via tcg_out_mov.  */

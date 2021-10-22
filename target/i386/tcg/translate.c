@@ -5330,8 +5330,6 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_op_mov_reg_v(s, ot, rm, s->T0);
         } else {
             gen_lea_modrm(env, s, modrm);
-            if (s->prefix & PREFIX_LOCK) {
-                tcg_gen_atomic_fetch_add_tl(s->T1, s->A0, s->T0,
                                             s->mem_index, ot | MO_LE);
                 tcg_gen_add_tl(s->T0, s->T0, s->T1);
             } else {
@@ -5359,7 +5357,15 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_op_mov_v_reg(s, ot, newv, reg);
             tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
 
-            if (s->prefix & PREFIX_LOCK) {
+            #define supports_native_cas 1
+            if (supports_native_cas) {
+                addr_to_cmpwith = s.A0;
+                xchange_with = newv;
+                cmpv //under x86, this has to be RAX, on arm it can be any
+
+                tcg_gen_cas(cmpv, newv, s->A0, memop);
+
+            } else if (s->prefix & PREFIX_LOCK) {
                 if (mod == 3) {
                     goto illegal_op;
                 }
