@@ -5359,9 +5359,10 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
 
             #define supports_native_cas 1
             if (supports_native_cas) {
+                /*
                 addr_to_cmpwith = s.A0;
                 xchange_with = newv;
-                cmpv //under x86, this has to be RAX, on arm it can be any
+                //cmpv //under x86, this has to be RAX, on arm it can be any */
 
                 tcg_gen_cas(cmpv, newv, s->A0, memop);
 
