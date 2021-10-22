@@ -606,6 +606,11 @@ typedef enum {
     DMB_ISH         = 0xd50338bf,
     DMB_LD          = 0x00000100,
     DMB_ST          = 0x00000200,
+
+    /* CAS instructions. */
+    CASAL32         = 0x88e0fc00,
+
+
 } AArch64Insn;
 
 static inline uint32_t tcg_in32(TCGContext *s)
@@ -1338,6 +1343,10 @@ static void tcg_out_goto_long(TCGContext *s, const tcg_insn_unit *target)
         tcg_out_movi(s, TCG_TYPE_I64, TCG_REG_TMP, (intptr_t)target);
         tcg_out_insn(s, 3207, BR, TCG_REG_TMP);
     }
+}
+
+static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg, TCGReg addrreg){
+    tcg_out32(s, CASAL32 | cmpreg << 16 | writereg << 0 | addrreg << 5);
 }
 
 static inline void tcg_out_callr(TCGContext *s, TCGReg reg)
@@ -2254,6 +2263,12 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc,
         tcg_out_mb(s, a0);
         break;
 
+    case INDEX_op_cas:
+        //tcg_out_cas(s, a0, a1, a2);
+        tcg_out_cas(s, a1, a2, args[3]);
+        tcg_out_mov(s, TCG_TYPE_I64, a0,a1);
+        break;
+
     case INDEX_op_mov_i32:  /* Always emitted via tcg_out_mov.  */
     case INDEX_op_mov_i64:
     case INDEX_op_call:     /* Always emitted via tcg_out_call.  */
@@ -2860,6 +2875,10 @@ static TCGConstraintSetIndex tcg_target_op_def(TCGOpcode op)
         return C_O1_I2(w, w, wZ);
     case INDEX_op_bitsel_vec:
         return C_O1_I3(w, w, w, w);
+
+    case INDEX_op_cas:
+        return C_O1_I3(r,r,r,r); //jasper
+
     case INDEX_op_aa64_sli_vec:
         return C_O1_I2(w, 0, w);
 
