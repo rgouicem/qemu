@@ -1166,6 +1166,9 @@ bool tcg_op_supported(TCGOpcode op)
         = TCG_TARGET_HAS_v64 | TCG_TARGET_HAS_v128 | TCG_TARGET_HAS_v256;
 
     switch (op) {
+    case INDEX_op_cas:
+        return true; //TODO jasper
+
     case INDEX_op_discard:
     case INDEX_op_set_label:
     case INDEX_op_call:
@@ -2489,6 +2492,9 @@ static void liveness_pass_1(TCGContext *s)
         TCGOpcode opc = op->opc;
         const TCGOpDef *def = &tcg_op_defs[opc];
 
+        if (opc == INDEX_op_cas){
+            fgets(0,0,0);
+        }
         switch (opc) {
         case INDEX_op_call:
             {
