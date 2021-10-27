@@ -5368,7 +5368,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
 
                 tcg_gen_cas(
                     tcgv_i64_temp(cmpv), tcgv_i64_temp(newv), tcgv_i64_temp(s->A0), 
-                    memop);
+                    ot | MO_LE);
 
             } else if (s->prefix & PREFIX_LOCK) {
                 if (mod == 3) {
