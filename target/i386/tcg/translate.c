@@ -5367,7 +5367,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 //cmpv //under x86, this has to be RAX, on arm it can be any */
 
                 tcg_gen_cas(
-                    tcgv_i32_temp(cmpv), tcgv_i32_temp(newv), tcgv_i32_temp(s->A0), 
+                    tcgv_i64_temp(cmpv), tcgv_i64_temp(newv), tcgv_i64_temp(s->A0), 
                     memop);
 
             } else if (s->prefix & PREFIX_LOCK) {
