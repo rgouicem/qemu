@@ -270,7 +270,7 @@ void tcg_gen_mb(TCGBar);
 /* Helper calls. */
 
 /* 32 bit ops */
-void tcg_gen_cas(TCGv cmpv, TCGv newv, TCGv addr);
+void tcg_gen_cas(TCGv cmpv, TCGv newv, TCGv addr, MemOp memop);
 
 void tcg_gen_movi_i32(TCGv_i32 ret, int32_t arg);
 void tcg_gen_addi_i32(TCGv_i32 ret, TCGv_i32 arg1, int32_t arg2);
