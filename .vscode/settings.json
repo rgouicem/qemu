@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "*.inc": "c",
-        "tcg-target-con-set.h": "c"
+        "tcg-target-con-set.h": "c",
+        "tcg-target-con-str.h": "c",
+        "tcg-op.h": "c"
     }
 }
