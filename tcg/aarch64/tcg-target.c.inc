@@ -2257,7 +2257,7 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc,
         break;
 
     case INDEX_op_cas:
-        tcg_out_cas(s, a0, a1, a2);
+        tcg_out_cas(s, a1, a2, args[3]);
         break;
 
     case INDEX_op_mov_i32:  /* Always emitted via tcg_out_mov.  */
