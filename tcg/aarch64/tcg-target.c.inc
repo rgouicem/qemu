@@ -2691,9 +2691,7 @@ void tcg_expand_vec_op(TCGOpcode opc, TCGType type, unsigned vece,
 static TCGConstraintSetIndex tcg_target_op_def(TCGOpcode op)
 {
     switch (op) {
-    case INDEX_op_cas:
-        return C_O1_I3(r,r,r,r);
-
+    
     case INDEX_op_goto_ptr:
         return C_O0_I1(r);
 
@@ -2869,6 +2867,10 @@ static TCGConstraintSetIndex tcg_target_op_def(TCGOpcode op)
         return C_O1_I2(w, w, wZ);
     case INDEX_op_bitsel_vec:
         return C_O1_I3(w, w, w, w);
+
+    case INDEX_op_cas:
+        return C_O1_I3(r,r,r,r);
+
     case INDEX_op_aa64_sli_vec:
         return C_O1_I2(w, 0, w);
 
