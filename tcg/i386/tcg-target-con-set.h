@@ -43,6 +43,7 @@ C_O1_I2(r, r, re)
 C_O1_I2(r, r, ri)
 C_O1_I2(r, r, rI)
 C_O1_I2(x, x, x)
+C_O1_I3(r,r,r,rA) //jasper
 C_N1_I2(r, r, r)
 C_N1_I2(r, r, rW)
 C_O1_I3(x, x, x, x)

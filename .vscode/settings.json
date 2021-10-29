@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.inc": "c",
+        "tcg-target-con-set.h": "c"
+    }
+}

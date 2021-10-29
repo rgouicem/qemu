@@ -1167,7 +1167,7 @@ bool tcg_op_supported(TCGOpcode op)
 
     switch (op) {
     case INDEX_op_cas:
-        return true; //TODO
+        return true; //TODO jasper
 
     case INDEX_op_discard:
     case INDEX_op_set_label:
