@@ -94,7 +94,7 @@ void tcg_gen_op6(TCGOpcode opc, TCGArg a1, TCGArg a2, TCGArg a3,
     op->args[5] = a6;
 }
 
-void tcg_gen_cas(TCGv cmpv, TCGv newv, TCGv addr, MemOp memop){
+void tcg_gen_cas(TCGv oldv, TCGv cmpv, TCGv newv, TCGv addr, MemOp memop){
     tcg_gen_op3(INDEX_op_cas, tcgv_i64_arg(cmpv), tcgv_i64_arg(newv), tcgv_i64_arg(addr));
 }
 
