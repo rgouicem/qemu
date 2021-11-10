@@ -5377,6 +5377,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 set_cc_op(s, CC_OP_SUBB + ot);
                 tcg_temp_free(newv);
                 tcg_temp_free(cmpv);
+                tcg_temp_free(oldv);
             } else {
 
                 oldv = tcg_temp_new();
