@@ -5373,8 +5373,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                     ot | MO_LE);
 
                 //gen_op_mov_reg_v(s, ot, R_EAX, oldv);
-                tcg_gen_mov_tl(oldv, cmpv);
-                gen_op_mov_reg_v(s, ot, R_EAX, oldv);
+                gen_op_mov_reg_v(s, ot, R_EAX, cmpv);
 
             } else if (s->prefix & PREFIX_LOCK) {
                 if (mod == 3) {
