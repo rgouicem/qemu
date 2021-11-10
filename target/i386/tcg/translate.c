@@ -5380,6 +5380,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                     goto illegal_op;
                 }
                 gen_lea_modrm(env, s, modrm);
+                //                      retv, addr,  cmpv, newv
                 tcg_gen_atomic_cmpxchg_tl(oldv, s->A0, cmpv, newv,
                                           s->mem_index, ot | MO_LE);
                 gen_op_mov_reg_v(s, ot, R_EAX, oldv);
