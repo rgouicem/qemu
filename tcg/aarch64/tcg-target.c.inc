@@ -1339,7 +1339,7 @@ static void tcg_out_goto_long(TCGContext *s, const tcg_insn_unit *target)
 }
 
 static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg, TCGReg addrreg){
-    tcg_out32(s, CASAL32 | cmpreg << 16 | writereg << 0 | addrreg << 4);
+    tcg_out32(s, CASAL32 | cmpreg << 16 | writereg << 0 | addrreg << 5);
 }
 
 static inline void tcg_out_callr(TCGContext *s, TCGReg reg)
