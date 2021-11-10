@@ -5361,19 +5361,16 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
 
             #define supports_native_cas 1
             if (supports_native_cas) {
-                /*
-                addr_to_cmpwith = s.A0;
-                xchange_with = newv;
-                //cmpv //under x86, this has to be RAX, on arm it can be any */
-
                 tcg_gen_mov_tl(oldv, cmpv);  // will this change smth?
+
+                //in the other scheme, cmpv is not changed. oldv becomes retv.
 
                 gen_lea_modrm(env, s, modrm);   //load target address into s.A0?
                 tcg_gen_cas(
-                    cmpv, newv, s->A0, 
+                    oldv, newv, s->A0, 
                     ot | MO_LE);
 
-                tcg_gen_mov_tl(oldv, cmpv);  // move cmpv to oldv for compatibility with code after if
+                //tcg_gen_mov_tl(oldv, cmpv);  // move cmpv to oldv for compatibility with code after if
                 gen_op_mov_reg_v(s, ot, R_EAX, cmpv);
 
             } else if (s->prefix & PREFIX_LOCK) {
