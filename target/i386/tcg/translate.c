@@ -5353,6 +5353,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             modrm = x86_ldub_code(env, s);
             reg = ((modrm >> 3) & 7) | REX_R(s);
             mod = (modrm >> 6) & 3;
+            oldv = tcg_temp_new();
             newv = tcg_temp_new();
             cmpv = tcg_temp_new();
             gen_op_mov_v_reg(s, ot, newv, reg);
