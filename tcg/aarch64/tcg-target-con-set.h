@@ -13,6 +13,7 @@ C_O0_I1(r)
 C_O0_I2(lZ, l)
 C_O0_I2(r, rA)
 C_O0_I2(rZ, r)
+C_O0_I3(r,r,r) //jasper
 C_O0_I2(w, r)
 C_O1_I1(r, l)
 C_O1_I1(r, r)
