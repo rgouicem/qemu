@@ -5359,17 +5359,14 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 newv = tcg_temp_new();
                 cmpv = tcg_temp_new();
                 gen_op_mov_v_reg(s, ot, newv, reg);
-                tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
 
-                tcg_gen_mov_tl(oldv, cmpv);  // will this change smth?
+                tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
+                tcg_gen_mov_tl(oldv, cpu_regs[R_EAX]);
 
                 gen_lea_modrm(env, s, modrm);   //load target address into s.A0?
-                tcg_gen_cas(
-                    cmpv, newv, s->A0, 
-                    ot | MO_LE);
+                tcg_gen_cas(oldv, newv, s->A0, ot | MO_LE);
 
-                tcg_gen_mov_tl(oldv, cmpv);  // move cmpv to oldv for compatibility with code after if
-                gen_op_mov_reg_v(s, ot, R_EAX, cmpv);
+                gen_op_mov_reg_v(s, ot, R_EAX, oldv);
 
                 tcg_gen_mov_tl(cpu_cc_src, oldv);
                 tcg_gen_mov_tl(s->cc_srcT, cmpv);
