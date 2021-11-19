@@ -4230,31 +4230,7 @@ int tcg_gen_code(TCGContext *s, TranslationBlock *tb)
     qatomic_set(&prof->la_time, prof->la_time - profile_getclock());
 #endif
 
-#ifdef DEBUG_DISAS
-    if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP_OPT)
-                 && qemu_log_in_addr_range(tb->pc))) {
-        FILE *logfile = qemu_log_lock();
-        qemu_log("OP after optimization, BEFORE liveness analysis:\n");
-        tcg_dump_ops(s, true);
-        qemu_log("\n");
-        qemu_log_unlock(logfile);
-    }
-#endif
-
-
     reachable_code_pass(s);
-
-#ifdef DEBUG_DISAS
-    if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP_OPT)
-                 && qemu_log_in_addr_range(tb->pc))) {
-        FILE *logfile = qemu_log_lock();
-        qemu_log("OP after reachable, BEFORE liveness analysis:\n");
-        tcg_dump_ops(s, true);
-        qemu_log("\n");
-        qemu_log_unlock(logfile);
-    }
-#endif
-
     liveness_pass_1(s);
 
     if (s->nb_indirects > 0) {
