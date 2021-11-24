@@ -951,10 +951,6 @@ int cpu_exec(CPUState *cpu)
                 qatomic_set(&cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)], tb);
             }
 
-            if (tb->pc == 0x401e33){
-                fgets(0,0,0);
-            }
-
 #ifndef CONFIG_USER_ONLY
             /*
              * We don't take care of direct jumps when address mapping
