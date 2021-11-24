@@ -2869,7 +2869,7 @@ static TCGConstraintSetIndex tcg_target_op_def(TCGOpcode op)
         return C_O1_I3(w, w, w, w);
 
     case INDEX_op_cas:
-        return C_O0_I3(r,r,r);
+        return C_O1_I3(r,r,r,r); //jasper
 
     case INDEX_op_aa64_sli_vec:
         return C_O1_I2(w, 0, w);
