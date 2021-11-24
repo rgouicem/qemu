@@ -2976,6 +2976,49 @@ static bool liveness_pass_2(TCGContext *s)
     return changes;
 }
 
+
+static void fence_opt_pass(TCGContext *s)
+{
+    TCGOp *op, *op_prev;
+    TCGOp *prev_fence = NULL;
+    int i = s->nb_ops;
+
+    QTAILQ_FOREACH_REVERSE_SAFE(op, &s->ops, link, op_prev) {
+        TCGOpcode opc = op->opc;
+
+        switch (opc) {
+        case INDEX_op_mb:
+            if (!prev_fence) {
+                prev_fence = op;
+            } else {
+                /*
+                 * We found a second barrier with no mem inst in between. Delete the last fence (in
+                 * program order) and change the first fence type to an OR of both fences.
+                 */
+                TCGArg prev_fence_type = prev_fence->args[0];
+
+                QTAILQ_REMOVE(&s->ops, prev_fence, link);
+                op->args[0] |= prev_fence_type;
+
+                /* Make this fence the "first" one */
+                prev_fence = op;
+            }
+            break;
+        case INDEX_op_qemu_st_i32:
+        case INDEX_op_qemu_ld_i32:
+        case INDEX_op_qemu_st_i64:
+        case INDEX_op_qemu_ld_i64:
+            prev_fence = NULL;
+            break;
+        default:
+            break;
+        }
+
+        i--;
+    }
+}
+
+
 #ifdef CONFIG_DEBUG_TCG
 static void dump_regs(TCGContext *s)
 {
@@ -4269,6 +4312,8 @@ int tcg_gen_code(TCGContext *s, TranslationBlock *tb)
             liveness_pass_1(s);
         }
     }
+
+    fence_opt_pass(s);
 
 #ifdef CONFIG_PROFILER
     qatomic_set(&prof->la_time, prof->la_time + profile_getclock());
