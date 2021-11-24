@@ -4222,7 +4222,7 @@ int tcg_gen_code(TCGContext *s, TranslationBlock *tb)
 #endif
 
 #ifdef USE_TCG_OPTIMIZATIONS
-    tcg_optimize(s);
+    //tcg_optimize(s);
 #endif
 
 #ifdef CONFIG_PROFILER
