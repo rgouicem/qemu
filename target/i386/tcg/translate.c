@@ -5348,45 +5348,23 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
     case 0x1b1: /* cmpxchg Ev, Gv */
         {
             TCGv oldv, newv, cmpv;
+            ot = mo_b_d(b, dflag);
+            modrm = x86_ldub_code(env, s);
+            reg = ((modrm >> 3) & 7) | REX_R(s);
+            mod = (modrm >> 6) & 3;
+            oldv = tcg_temp_new();
+            newv = tcg_temp_new();
+            cmpv = tcg_temp_new();
+            gen_op_mov_v_reg(s, ot, newv, reg);
+
+            tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
 
             #define supports_native_cas 1
             if (supports_native_cas) {
-                ot = mo_b_d(b, dflag);
-                modrm = x86_ldub_code(env, s);
-                reg = ((modrm >> 3) & 7) | REX_R(s);
-                mod = (modrm >> 6) & 3;
-                oldv = tcg_temp_new();
-                newv = tcg_temp_new();
-                cmpv = tcg_temp_new();
-                gen_op_mov_v_reg(s, ot, newv, reg);
-
-                tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
-
                 gen_lea_modrm(env, s, modrm);   //load target address into s.A0?
                 tcg_gen_cas(oldv, cmpv, newv, s->A0, ot | MO_LE);
-
                 gen_op_mov_reg_v(s, ot, R_EAX, oldv);
-
-                tcg_gen_mov_tl(cpu_cc_src, oldv);
-                tcg_gen_mov_tl(s->cc_srcT, cmpv);
-                tcg_gen_sub_tl(cpu_cc_dst, cmpv, oldv);
-                set_cc_op(s, CC_OP_SUBB + ot);
-                tcg_temp_free(oldv);
-                tcg_temp_free(newv);
-                tcg_temp_free(cmpv);
-
             } else {
-                ot = mo_b_d(b, dflag);
-                modrm = x86_ldub_code(env, s);
-                reg = ((modrm >> 3) & 7) | REX_R(s);
-                mod = (modrm >> 6) & 3;
-                oldv = tcg_temp_new();
-                newv = tcg_temp_new();
-                cmpv = tcg_temp_new();
-                gen_op_mov_v_reg(s, ot, newv, reg);
-                tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
-
-
                 if (s->prefix & PREFIX_LOCK) {
                     if (mod == 3) {
                         goto illegal_op;
@@ -5421,14 +5399,14 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                         gen_op_mov_reg_v(s, ot, R_EAX, oldv);
                     }
                 }
-                tcg_gen_mov_tl(cpu_cc_src, oldv);
-                tcg_gen_mov_tl(s->cc_srcT, cmpv);
-                tcg_gen_sub_tl(cpu_cc_dst, cmpv, oldv);
-                set_cc_op(s, CC_OP_SUBB + ot);
-                tcg_temp_free(oldv);
-                tcg_temp_free(newv);
-                tcg_temp_free(cmpv);
             }
+            tcg_gen_mov_tl(cpu_cc_src, oldv);
+            tcg_gen_mov_tl(s->cc_srcT, cmpv);
+            tcg_gen_sub_tl(cpu_cc_dst, cmpv, oldv);
+            set_cc_op(s, CC_OP_SUBB + ot);
+            tcg_temp_free(oldv);
+            tcg_temp_free(newv);
+            tcg_temp_free(cmpv);
         }
         break;
     case 0x1c7: /* cmpxchg8b */
