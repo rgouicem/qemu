@@ -2492,9 +2492,6 @@ static void liveness_pass_1(TCGContext *s)
         TCGOpcode opc = op->opc;
         const TCGOpDef *def = &tcg_op_defs[opc];
 
-        if (opc == INDEX_op_cas){
-            fgets(0,0,0);
-        }
         switch (opc) {
         case INDEX_op_call:
             {
