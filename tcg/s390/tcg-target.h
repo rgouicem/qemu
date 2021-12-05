@@ -142,6 +142,8 @@ extern uint64_t s390_facilities;
 #define TCG_TARGET_EXTEND_ARGS 1
 #define TCG_TARGET_HAS_MEMORY_BSWAP   1
 
+#define TCG_TARGET_HAS_cas              0
+
 #define TCG_TARGET_DEFAULT_MO (TCG_MO_ALL & ~TCG_MO_ST_LD)
 
 enum {
