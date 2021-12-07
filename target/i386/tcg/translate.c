@@ -5333,7 +5333,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             gen_op_mov_reg_v(s, ot, rm, s->T0);
         } else {
             gen_lea_modrm(env, s, modrm);
-            if (s->prefix & PREFIX_LOCK){
+            if (s->prefix & PREFIX_LOCK) {
                 tcg_gen_atomic_fetch_add_tl(s->T1, s->A0, s->T0,
                                             s->mem_index, ot | MO_LE);
                 tcg_gen_add_tl(s->T0, s->T0, s->T1);
@@ -5351,6 +5351,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
     case 0x1b1: /* cmpxchg Ev, Gv */
         {
             TCGv oldv, newv, cmpv;
+
             ot = mo_b_d(b, dflag);
             modrm = x86_ldub_code(env, s);
             reg = ((modrm >> 3) & 7) | REX_R(s);
@@ -5359,22 +5360,15 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             newv = tcg_temp_new();
             cmpv = tcg_temp_new();
             gen_op_mov_v_reg(s, ot, newv, reg);
-
             tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
 
-            #define supports_native_cas 1
-            if (supports_native_cas) {
-                gen_lea_modrm(env, s, modrm);   //load target address into s.A0?
-                tcg_gen_cas(oldv, cmpv, newv, s->A0, ot | MO_LE);
-                gen_op_mov_reg_v(s, ot, R_EAX, oldv);
-            } else if (s->prefix & PREFIX_LOCK) {
+            if (s->prefix & PREFIX_LOCK) {
                 if (mod == 3) {
                     goto illegal_op;
                 }
                 gen_lea_modrm(env, s, modrm);
-                //                      retv, addr,  cmpv, newv
                 tcg_gen_atomic_cmpxchg_tl(oldv, s->A0, cmpv, newv,
-                                        s->mem_index, ot | MO_LE);
+                                          s->mem_index, ot | MO_LE);
                 gen_op_mov_reg_v(s, ot, R_EAX, oldv);
             } else {
                 if (mod == 3) {
@@ -5394,9 +5388,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                     gen_op_mov_reg_v(s, ot, rm, newv);
                 } else {
                     /* Perform an unconditional store cycle like physical cpu;
-                    must be before changing accumulator to ensure
-                    idempotency if the store faults and the instruction
-                    is restarted */
+                       must be before changing accumulator to ensure
+                       idempotency if the store faults and the instruction
+                       is restarted */
                     gen_op_st_v(s, ot, newv, s->A0);
                     gen_op_mov_reg_v(s, ot, R_EAX, oldv);
                 }

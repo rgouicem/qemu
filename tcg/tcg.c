@@ -1166,9 +1166,6 @@ bool tcg_op_supported(TCGOpcode op)
         = TCG_TARGET_HAS_v64 | TCG_TARGET_HAS_v128 | TCG_TARGET_HAS_v256;
 
     switch (op) {
-    case INDEX_op_cas:
-        return true; //TODO jasper
-
     case INDEX_op_discard:
     case INDEX_op_set_label:
     case INDEX_op_call:
