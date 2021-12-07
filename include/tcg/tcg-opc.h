@@ -129,7 +129,7 @@ DEF(st32_i64, 0, 2, 1, IMPL64)
 DEF(st_i64, 0, 2, 1, IMPL64)
 /* arith */
 DEF(add_i64, 1, 2, 0, IMPL64)
-DEF(sub_i64, 1, 2, 0, IMPL64)
+DEF(sub_i64, 1, 2, 0, IMPL64 | TCG_OPF_SIDE_EFFECTS)
 DEF(mul_i64, 1, 2, 0, IMPL64)
 DEF(div_i64, 1, 2, 0, IMPL64 | IMPL(TCG_TARGET_HAS_div_i64))
 DEF(divu_i64, 1, 2, 0, IMPL64 | IMPL(TCG_TARGET_HAS_div_i64))
