@@ -1342,7 +1342,8 @@ static void tcg_out_goto_long(TCGContext *s, const tcg_insn_unit *target)
 }
 
 static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg, TCGReg addrreg, MemOp op){
-    AArch64Insn casins=0;
+    AArch64Insn casins=CASAL32;
+    op=4;
     switch (op){
         case MO_8:
             casins = CASAL8;
