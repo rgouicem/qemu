@@ -601,7 +601,10 @@ typedef enum {
     DMB_ST          = 0x00000200,
 
     /* CAS instructions. */
+    CASAL8          = 0x08e0fc00,
+    CASAL16         = 0x48e0fc00,
     CASAL32         = 0x88e0fc00,
+    CASAL32         = 0xc8e0fc00,
 
 
 } AArch64Insn;
@@ -1338,8 +1341,25 @@ static void tcg_out_goto_long(TCGContext *s, const tcg_insn_unit *target)
     }
 }
 
-static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg, TCGReg addrreg){
-    tcg_out32(s, CASAL32 | cmpreg << 16 | writereg << 0 | addrreg << 5);
+static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg, TCGReg addrreg, MemOp op){
+    AArch64Insn casins=0;
+    switch (op){
+        case MO_8:
+            casins = CASAL8;
+            break;
+        case MO_16:
+            casins = CASAL16;
+            break;
+        case MO_32:
+            casins = CASAL32;
+            break;
+        case MO_64:
+            casins = CASAL64;
+            break;
+        default:
+            tcg_abort();
+    }
+    tcg_out32(s, casins | cmpreg << 16 | writereg << 0 | addrreg << 5);
 }
 
 static inline void tcg_out_callr(TCGContext *s, TCGReg reg)
@@ -2258,7 +2278,7 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc,
 
     case INDEX_op_cas:
         //tcg_out_cas(s, a0, a1, a2);
-        tcg_out_cas(s, a1, a2, args[3]);
+        tcg_out_cas(s, a1, a2, args[3], args[4]);
         tcg_out_mov(s, TCG_TYPE_I64, a0,a1);
         break;
 
