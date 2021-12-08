@@ -94,11 +94,7 @@ void tcg_gen_op6(TCGOpcode opc, TCGArg a1, TCGArg a2, TCGArg a3,
     op->args[5] = a6;
 }
 
-void tcg_gen_cas(TCGv oldv, TCGv cmpv, TCGv newv, TCGv addr, MemOp memop){
-    TCGArg arg = tcgv_i64_arg(cmpv);
-    memop = tcg_canonicalize_memop(memop, 1, 1);
-    tcg_gen_op5(INDEX_op_cas, tcgv_i64_arg(oldv), arg,tcgv_i64_arg(newv), tcgv_i64_arg(addr), memop);
-}
+
 
 void tcg_gen_mb(TCGBar mb_type)
 {
@@ -2795,6 +2791,12 @@ static inline MemOp tcg_canonicalize_memop(MemOp op, bool is64, bool st)
         op &= ~MO_SIGN;
     }
     return op;
+}
+
+void tcg_gen_cas(TCGv oldv, TCGv cmpv, TCGv newv, TCGv addr, MemOp memop){
+    TCGArg arg = tcgv_i64_arg(cmpv);
+    memop = tcg_canonicalize_memop(memop, 1, 1);
+    tcg_gen_op5(INDEX_op_cas, tcgv_i64_arg(oldv), arg,tcgv_i64_arg(newv), tcgv_i64_arg(addr), memop);
 }
 
 static void gen_ldst_i32(TCGOpcode opc, TCGv_i32 val, TCGv addr,
