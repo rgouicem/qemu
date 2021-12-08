@@ -5362,11 +5362,6 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
 
 
-<<<<<<< HEAD
-=======
-            #define supports_native_cas 1
-            if (supports_native_cas) {
->>>>>>> 1981dba205087180d3883dbd00205fcfa307e1c6
                 gen_lea_modrm(env, s, modrm);   //load target address into s.A0?
                 tcg_gen_cas(cpu_regs[R_EAX],cpu_regs[R_EAX], newv, s->A0, ot | MO_LE);
                 //gen_op_mov_reg_v(s, ot, R_EAX, oldv);
