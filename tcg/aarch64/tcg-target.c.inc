@@ -604,7 +604,7 @@ typedef enum {
     CASAL8          = 0x08e0fc00,
     CASAL16         = 0x48e0fc00,
     CASAL32         = 0x88e0fc00,
-    CASAL32         = 0xc8e0fc00,
+    CASAL64         = 0xc8e0fc00,
 
 
 } AArch64Insn;
