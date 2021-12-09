@@ -43,7 +43,8 @@ DEF(br, 0, 0, 1, TCG_OPF_BB_END)
 #endif
 
 #define TCG_TARGET_HAS_cas 1
-DEF(cas, 1, 3, 0, IMPL(TCG_TARGET_HAS_cas) | TCG_OPF_SIDE_EFFECTS) //jasper
+DEF(cas, 1, 3, 0, 
+    IMPL(TCG_TARGET_HAS_cas) | TCG_OPF_SIDE_EFFECTS | TCG_OPF_CALL_CLOBBER ) //jasper
 
 DEF(mb, 0, 0, 1, 0)
 
