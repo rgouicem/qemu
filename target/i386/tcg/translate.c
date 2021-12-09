@@ -5369,6 +5369,7 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
                 tcg_gen_mov_tl(cpu_cc_src, cpu_regs[R_EAX]);
                 tcg_gen_mov_tl(s->cc_srcT, cmpv);
                 tcg_gen_sub_tl(cpu_cc_dst, cmpv, cpu_regs[R_EAX]);
+                tcg_gen_neg_tl(cpu_cc_dst, cpu_cc_dst);
                 set_cc_op(s, CC_OP_SUBB + ot);
                 //tcg_temp_free(oldv);
                 tcg_temp_free(newv);
