@@ -1170,7 +1170,7 @@ bool tcg_op_supported(TCGOpcode op)
     case INDEX_op_cas16:
     case INDEX_op_cas32:
     case INDEX_op_cas64:
-        return TCG_TARGET_HAS_cas; //TODO jasper
+        return TCG_TARGET_HAS_cas;
 
     case INDEX_op_discard:
     case INDEX_op_set_label:
