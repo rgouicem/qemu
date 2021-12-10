@@ -48,6 +48,7 @@
 #include "target_elf.h"
 #include "cpu_loop-common.h"
 #include "crypto/init.h"
+#include "native-lib.h"
 #include "fd-trans.h"
 
 #ifndef AT_FLAGS_PRESERVE_ARGV0
@@ -246,6 +247,11 @@ static void handle_arg_dfilter(const char *arg)
 static void handle_arg_log_filename(const char *arg)
 {
     qemu_set_log_filename(arg, &error_fatal);
+}
+
+static void handle_arg_nlib(const char *arg)
+{
+    nlib_load_idl(arg);
 }
 
 static void handle_arg_set_env(const char *arg)
@@ -461,6 +467,8 @@ static const struct qemu_argument arg_table[] = {
      "",           "Seed for pseudo-random number generator"},
     {"trace",      "QEMU_TRACE",       true,  handle_arg_trace,
      "",           "[[enable=]<pattern>][,events=<file>][,file=<file>]"},
+    {"nlib",       "QEMU_NLIB",       true,  handle_arg_nlib,
+     "",           "<file>"},
 #ifdef CONFIG_PLUGIN
     {"plugin",     "QEMU_PLUGIN",      true,  handle_arg_plugin,
      "",           "[file=]<file>[,arg=<string>]"},
@@ -639,6 +647,7 @@ int main(int argc, char **argv, char **envp)
     module_call_init(MODULE_INIT_TRACE);
     qemu_init_cpu_list();
     module_call_init(MODULE_INIT_QOM);
+    nlib_init();
 
     envlist = envlist_create();
 

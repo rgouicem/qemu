@@ -38,7 +38,10 @@
 #include "translate-a64.h"
 #include "qemu/atomic128.h"
 
+#include "native-lib.h"
+
 static TCGv_i64 cpu_X[32];
+static TCGv_vec cpu_V[32];
 static TCGv_i64 cpu_pc;
 
 /* Load/store exclusive handling */
@@ -49,6 +52,13 @@ static const char *regnames[] = {
     "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
     "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
     "x24", "x25", "x26", "x27", "x28", "x29", "lr", "sp"
+};
+
+static const char *vregnames[] = {
+    "v0",  "v1",  "v2",  "v3",  "v4",  "v5",  "v6",  "v7",
+    "v8",  "v9",  "v10", "v11", "v12", "v13", "v14", "v15",
+    "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23",
+    "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
 };
 
 enum a64_shift_type {
@@ -81,6 +91,12 @@ void a64_translate_init(void)
         cpu_X[i] = tcg_global_mem_new_i64(cpu_env,
                                           offsetof(CPUARMState, xregs[i]),
                                           regnames[i]);
+    }
+
+    for (i = 0; i < 32; i++) {
+        cpu_V[i] = tcg_global_mem_new_vec(cpu_env,
+                                          offsetof(CPUARMState, vfp.zregs[i]),
+                                          vregnames[i]);
     }
 
     cpu_exclusive_high = tcg_global_mem_new_i64(cpu_env,
@@ -477,6 +493,11 @@ TCGv_i64 cpu_reg(DisasContext *s, int reg)
 TCGv_i64 cpu_reg_sp(DisasContext *s, int reg)
 {
     return cpu_X[reg];
+}
+
+TCGv_vec vfp_reg(DisasContext *s, int reg)
+{
+    return cpu_V[reg];
 }
 
 /* read a cpu register in 32bit/64bit mode. Returns a TCGv_i64
@@ -14870,6 +14891,78 @@ static void aarch64_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     translator_loop_temp_check(&dc->base);
 }
 
+static TCGTemp *gen_nlib_call_arg(DisasContext *s, int idx, const nlib_type *t)
+{
+    switch (t->tc) {
+    case NLTC_SINT:
+    case NLTC_UINT:
+    case NLTC_STRING:
+    case NLTC_MEMPTR:
+    case NLTC_CPLX:
+        return tcgv_i64_temp(cpu_reg(s, idx));
+
+    case NLTC_FLOAT:
+        return tcgv_vec_temp(vfp_reg(s, idx));
+
+    default:
+        fprintf(stderr, "nlib: unsupported arg type\n");
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+static void gen_nlib_call(DisasContext *s, const nlib_function *fn)
+{
+    // Technical limitation for argument count - possibly?
+    if (fn->nr_args > 6) {
+        fprintf(stderr, "nlib: too many arguments\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int gpri = 0, fpri = 0;
+
+    // Prepare the return value
+    TCGTemp *retval;
+    if (fn->retty.tc == NLTC_VOID) {
+        retval = NULL;
+    } else {
+        retval = gen_nlib_call_arg(s, 0, &fn->retty);
+    }
+
+    // Prepare function arguments
+    TCGTemp *args[fn->nr_args+1];
+
+    int o = 0;
+    if (fn->retty.tc == NLTC_CPLX) {
+        args[0] = gen_nlib_call_arg(s, 8, &fn->retty);
+        o = 1;
+    }
+
+    for (int i = 0; i < fn->nr_args; i++) {
+        int reg;
+        if (fn->argty[i].tc == NLTC_FLOAT) {
+            reg = fpri++;
+        } else {
+            reg = gpri++;
+        }
+
+        args[i+o] = gen_nlib_call_arg(s, reg, &fn->argty[i]);
+    }
+
+    // Generate the call instruction
+    tcg_gen_callN(fn->fnptr, retval, fn->nr_args, args);
+}
+
+static void aarch64_tr_translate_nlib_call(DisasContextBase *dcbase, CPUState *cpu, void *fn)
+{
+    DisasContext *dc = container_of(dcbase, DisasContext, base);
+    gen_nlib_call(dc, (nlib_function *)fn);
+
+    gen_a64_set_pc(dc, cpu_reg(dc, 30));
+
+    dcbase->is_jmp = DISAS_JUMP;
+}
+
 static void aarch64_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *dc = container_of(dcbase, DisasContext, base);
@@ -14959,6 +15052,7 @@ const TranslatorOps aarch64_translator_ops = {
     .tb_start           = aarch64_tr_tb_start,
     .insn_start         = aarch64_tr_insn_start,
     .translate_insn     = aarch64_tr_translate_insn,
+    .translate_nlib_call = aarch64_tr_translate_nlib_call,
     .tb_stop            = aarch64_tr_tb_stop,
     .disas_log          = aarch64_tr_disas_log,
 };

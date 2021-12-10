@@ -14,6 +14,7 @@
 #include "qemu/units.h"
 #include "qemu/selfmap.h"
 #include "qapi/error.h"
+#include "native-lib.h"
 
 #ifdef _ARCH_PPC64
 #undef ARCH_DLINFO
@@ -1743,6 +1744,7 @@ static inline void bswap_mips_abiflags(Mips_elf_abiflags_v0 *abiflags) { }
 static int elf_core_dump(int, const CPUArchState *);
 #endif /* USE_ELF_CORE_DUMP */
 static void load_symbols(struct elfhdr *hdr, int fd, abi_ulong load_bias);
+static void load_nlib(struct elfhdr *hdr, int fd, abi_ulong load_bias);
 
 /* Verify the portions of EHDR within E_IDENT for the target.
    This can be performed before bswapping the entire header.  */
@@ -2934,6 +2936,10 @@ static void load_elf_image(const char *image_name, int image_fd,
         load_symbols(ehdr, image_fd, load_bias);
     }
 
+    if (pinterp_name != NULL) {
+        load_nlib(ehdr, image_fd, load_bias);
+    }
+
     mmap_unlock();
 
     close(image_fd);
@@ -3021,6 +3027,197 @@ static int symcmp(const void *s0, const void *s1)
     return (sym0->st_value < sym1->st_value)
         ? -1
         : ((sym0->st_value > sym1->st_value) ? 1 : 0);
+}
+
+static struct elf_shdr *read_section_headers(struct elfhdr *hdr, int fd)
+{
+    int shnum, shsize;
+    struct elf_shdr *shdr;
+
+    shnum = hdr->e_shnum;
+    shsize = shnum * sizeof(struct elf_shdr);
+
+    shdr = (struct elf_shdr *)g_try_malloc(shsize);
+    if (!shdr || pread(fd, shdr, shsize, hdr->e_shoff) != shsize) {
+        if (shdr) {
+            g_free(shdr);
+        }
+
+        return NULL;
+    }
+
+    return shdr;
+}
+
+static void *read_section(struct elf_shdr *shdr, int fd)
+{
+    void *sd;
+
+    sd = g_try_malloc(shdr->sh_size);
+    if (!sd || pread(fd, sd, shdr->sh_size, shdr->sh_offset) != shdr->sh_size) {
+        if (sd) {
+            g_free(sd);
+        }
+
+        return NULL;
+    }
+
+    return sd;
+}
+
+static void load_nlib(struct elfhdr *hdr, int fd, abi_ulong load_bias)
+{
+    // Load section headers
+    struct elf_shdr *shdr = read_section_headers(hdr, fd);
+    if (!shdr) {
+        return;
+    }
+
+    // Make sure there's a section header string table
+    if (hdr->e_shstrndx == SHN_UNDEF) {
+        g_free(shdr);
+        return;
+    }
+
+    // Read the section header string table
+    char *strings = read_section(&shdr[hdr->e_shstrndx], fd);
+    if (!strings) {
+        g_free(shdr);
+        return;
+    }
+
+    // Find the .plt and .rela.plt sections
+    struct elf_shdr *shrelaplt = NULL;
+    struct elf_shdr *shplt = NULL;
+
+    for (int i = 0; i < hdr->e_shnum; ++i) {
+        if (shdr[i].sh_type == SHT_RELA && !strcmp(&strings[shdr[i].sh_name], ".rela.plt")) {
+            shrelaplt = &shdr[i];
+        } else if (shdr[i].sh_type == SHT_PROGBITS && !strcmp(&strings[shdr[i].sh_name], ".plt")) {
+            shplt = &shdr[i];
+        }
+
+        if (shrelaplt && shplt) {
+            goto found;
+        }
+    }
+
+    // Sections not found, so nothing to do!
+    g_free(strings);
+    g_free(shdr);
+
+    return;
+
+found:
+    // Done with section header strings
+    g_free(strings);
+
+    // AARCH64 ONLY!!!
+
+    // Load the .plt section
+    unsigned char *zplt = read_section(shplt, fd);
+    if (!zplt) {
+        goto out;
+    }
+
+    // Load the .rela.plt section
+    struct elf_rela *rela = read_section(shrelaplt, fd);
+    if (!rela) {
+        g_free(zplt);
+        goto out;
+    }
+
+    // Load the symbol table linked to the .rela.plt section
+    struct elf_sym *syms = read_section(&shdr[shrelaplt->sh_link], fd);
+    if (!syms) {
+        g_free(rela);
+        g_free(zplt);
+        goto out;
+    }
+
+    // Load string table linked to the symbol table linked to the .rela.plt section
+    strings = read_section(&shdr[shdr[shrelaplt->sh_link].sh_link], fd);
+    if (!strings) {
+        g_free(syms);
+        g_free(rela);
+        g_free(zplt);
+
+        goto out;
+    }
+
+    GHashTable *plt_map = g_hash_table_new(NULL, NULL);
+    if (!plt_map) {
+        return;
+    }
+
+    uint64_t base = shplt->sh_addr;
+
+#ifdef TARGET_AARCH64
+    unsigned int *plt = (unsigned int *)zplt;
+
+    // Parse PLT Entries, and build an offset -> VA map
+    for (int i = 0; i < shplt->sh_size / sizeof(*plt); i+=4) {
+        if ((plt[i] & 0x9f000000) != 0x90000000) {
+            continue;
+        }
+
+        uint64_t off = (((base + (i*4)) >> 12) << 12) + (((plt[i] >> 29) & 3) << 12) + (((plt[i] >> 5) & 0x3ffff) << 14);
+
+        if ((plt[i+1] >> 22) != 0x3e5) {
+            continue;
+        }
+
+        off += ((plt[i+1] >> 10) & 0xfff) << 3;
+
+        uint64_t va = load_bias+base+(i*4);
+
+        // fprintf(stderr, "%lx -> %lx\n", off, va);
+        g_hash_table_insert(plt_map, (gpointer)off, (gpointer)va);
+    }
+#endif
+
+#ifdef TARGET_X86_64
+    // Parse PLT Entries, and build an offset -> VA map
+    for (int i = 0; i < shplt->sh_size; i+=16) {
+        unsigned char *plt_entry = &zplt[i];
+
+        if (plt_entry[0] == 0xff && plt_entry[1] == 0x25) {
+            uint32_t imm = *(uint32_t *)&plt_entry[2];
+
+            uint64_t off = base+imm+6+i;
+            uint64_t va = load_bias+base+i;
+
+            // fprintf(stderr, "%lx -> %lx\n", off, va);
+            g_hash_table_insert(plt_map, (gpointer)off, (gpointer)va);
+        }
+    }
+#endif
+
+    // Parse RELAPLT entries, and connect them up
+    int relnum = shrelaplt->sh_size / sizeof(struct elf_rela);
+    for (int i = 0; i < relnum; i++) {
+        unsigned int symbol = ELF_R_SYM(rela[i].r_info);
+        // fprintf(stderr, "got rela: %lx %lx %s", rela[i].r_offset, syms[symbol].st_value, &strings[syms[symbol].st_name]);
+
+        uint64_t va = (uint64_t)g_hash_table_lookup(plt_map, (gconstpointer)rela[i].r_offset);
+        if (va) {
+            // fprintf(stderr, " mapped to %lx\n", va);
+            nlib_register_txln_hook(va, &strings[syms[symbol].st_name]);
+        } else {
+            // fprintf(stderr, " no map\n");
+        }
+    }
+
+
+    g_hash_table_destroy(plt_map);
+
+    g_free(syms);
+    g_free(rela);
+    g_free(zplt);
+    g_free(strings);
+
+out:
+    g_free(shdr);
 }
 
 /* Best attempt to load symbols from this ELF object. */

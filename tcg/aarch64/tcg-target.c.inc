@@ -66,6 +66,13 @@ static const int tcg_target_call_oarg_regs[1] = {
     TCG_REG_X0
 };
 
+static const int tcg_target_call_iarg_regs_fp[8] = {
+    TCG_REG_V0, TCG_REG_V1, TCG_REG_V2, TCG_REG_V3
+};
+static const int tcg_target_call_oarg_regs_fp[1] = {
+    TCG_REG_V0
+};
+
 #define TCG_REG_TMP TCG_REG_X30
 #define TCG_VEC_TMP TCG_REG_V31
 
@@ -605,7 +612,6 @@ typedef enum {
     CASAL16         = 0x48e0fc00,
     CASAL32         = 0x88e0fc00,
     CASAL64         = 0xc8e0fc00,
-
 
 } AArch64Insn;
 
@@ -2295,7 +2301,6 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc,
         tcg_out_cas(s, a1, a2, args[3], MO_64);
         tcg_out_mov(s, TCG_TYPE_I64, a0,a1);
         break;
-
 
     case INDEX_op_mov_i32:  /* Always emitted via tcg_out_mov.  */
     case INDEX_op_mov_i64:

@@ -17,6 +17,7 @@
 #include "exec/translator.h"
 #include "exec/plugin-gen.h"
 #include "sysemu/replay.h"
+#include "native-lib.h"
 
 /* Pairs with tcg_clear_temp_count.
    To be called by #TranslatorOps.{translate_insn,tb_stop} if
@@ -70,61 +71,74 @@ void translator_loop(const TranslatorOps *ops, DisasContextBase *db,
 
     plugin_enabled = plugin_gen_tb_start(cpu, tb, cflags & CF_MEMI_ONLY);
 
-    while (true) {
-        db->num_insns++;
-        ops->insn_start(db, cpu);
-        tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
+    nlib_function *nfn = nlib_get_txln_hook(tb->pc);
+    if (ops->translate_nlib_call && nfn) {
+        ops->translate_nlib_call(db, cpu, nfn);
 
-        if (plugin_enabled) {
-            plugin_gen_insn_start(cpu, db);
+        /* Emit code to exit the TB, as indicated by db->is_jmp.  */
+        ops->tb_stop(db, cpu);
+        gen_tb_end(db->tb, 1);
+
+            /* The disas_log hook may use these values rather than recompute.  */
+        tb->size = 4;
+        tb->icount = 1;
+    } else {
+        while (true) {
+            db->num_insns++;
+            ops->insn_start(db, cpu);
+            tcg_debug_assert(db->is_jmp == DISAS_NEXT);  /* no early exit */
+
+            if (plugin_enabled) {
+                plugin_gen_insn_start(cpu, db);
+            }
+
+            /* Disassemble one instruction.  The translate_insn hook should
+            update db->pc_next and db->is_jmp to indicate what should be
+            done next -- either exiting this loop or locate the start of
+            the next instruction.  */
+            if (db->num_insns == db->max_insns && (cflags & CF_LAST_IO)) {
+                /* Accept I/O on the last instruction.  */
+                gen_io_start();
+                ops->translate_insn(db, cpu);
+            } else {
+                /* we should only see CF_MEMI_ONLY for io_recompile */
+                tcg_debug_assert(!(cflags & CF_MEMI_ONLY));
+                ops->translate_insn(db, cpu);
+            }
+
+            /* Stop translation if translate_insn so indicated.  */
+            if (db->is_jmp != DISAS_NEXT) {
+                break;
+            }
+
+            /*
+            * We can't instrument after instructions that change control
+            * flow although this only really affects post-load operations.
+            */
+            if (plugin_enabled) {
+                plugin_gen_insn_end();
+            }
+
+            /* Stop translation if the output buffer is full,
+            or we have executed all of the allowed instructions.  */
+            if (tcg_op_buf_full() || db->num_insns >= db->max_insns) {
+                db->is_jmp = DISAS_TOO_MANY;
+                break;
+            }
         }
 
-        /* Disassemble one instruction.  The translate_insn hook should
-           update db->pc_next and db->is_jmp to indicate what should be
-           done next -- either exiting this loop or locate the start of
-           the next instruction.  */
-        if (db->num_insns == db->max_insns && (cflags & CF_LAST_IO)) {
-            /* Accept I/O on the last instruction.  */
-            gen_io_start();
-            ops->translate_insn(db, cpu);
-        } else {
-            /* we should only see CF_MEMI_ONLY for io_recompile */
-            tcg_debug_assert(!(cflags & CF_MEMI_ONLY));
-            ops->translate_insn(db, cpu);
-        }
+        /* Emit code to exit the TB, as indicated by db->is_jmp.  */
+        ops->tb_stop(db, cpu);
+        gen_tb_end(db->tb, db->num_insns);
 
-        /* Stop translation if translate_insn so indicated.  */
-        if (db->is_jmp != DISAS_NEXT) {
-            break;
-        }
-
-        /*
-         * We can't instrument after instructions that change control
-         * flow although this only really affects post-load operations.
-         */
-        if (plugin_enabled) {
-            plugin_gen_insn_end();
-        }
-
-        /* Stop translation if the output buffer is full,
-           or we have executed all of the allowed instructions.  */
-        if (tcg_op_buf_full() || db->num_insns >= db->max_insns) {
-            db->is_jmp = DISAS_TOO_MANY;
-            break;
-        }
+        /* The disas_log hook may use these values rather than recompute.  */
+        tb->size = db->pc_next - db->pc_first;
+        tb->icount = db->num_insns;
     }
-
-    /* Emit code to exit the TB, as indicated by db->is_jmp.  */
-    ops->tb_stop(db, cpu);
-    gen_tb_end(db->tb, db->num_insns);
 
     if (plugin_enabled) {
         plugin_gen_tb_end(cpu);
     }
-
-    /* The disas_log hook may use these values rather than recompute.  */
-    tb->size = db->pc_next - db->pc_first;
-    tb->icount = db->num_insns;
 
 #ifdef DEBUG_DISAS
     if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)

@@ -108,11 +108,22 @@ static const int tcg_target_call_iarg_regs[] = {
 #endif
 };
 
+static const int tcg_target_call_iarg_regs_fp[] = {
+    TCG_REG_XMM0,
+    TCG_REG_XMM1,
+    TCG_REG_XMM2,
+    TCG_REG_XMM3
+};
+
 static const int tcg_target_call_oarg_regs[] = {
     TCG_REG_EAX,
 #if TCG_TARGET_REG_BITS == 32
     TCG_REG_EDX
 #endif
+};
+
+static const int tcg_target_call_oarg_regs_fp[] = {
+    TCG_REG_XMM0
 };
 
 /* Constants we accept.  */
