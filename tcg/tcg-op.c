@@ -2796,7 +2796,24 @@ static inline MemOp tcg_canonicalize_memop(MemOp op, bool is64, bool st)
 void tcg_gen_cas(TCGv oldv, TCGv cmpv, TCGv newv, TCGv addr, MemOp memop){
     TCGArg arg = tcgv_i64_arg(cmpv);
     memop = tcg_canonicalize_memop(memop, 1, 1);
-    tcg_gen_op4(INDEX_op_cas, 
+    int op=0;
+    switch (memop){
+        case MO_8:
+            op=INDEX_op_cas8;
+            break;
+        case MO_16:
+            op=INDEX_op_cas16;
+            break;
+        case MO_32:
+            op=INDEX_op_cas32;
+            break;
+        case MO_64:
+            op=INDEX_op_cas64;
+            break;
+        default:
+            tcg_abort();
+    }
+    tcg_gen_op4(op, 
         tcgv_i64_arg(oldv), arg,tcgv_i64_arg(newv), tcgv_i64_arg(addr));
 }
 
