@@ -2294,7 +2294,7 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc,
         tcg_out_mov(s, TCG_TYPE_I64, a0,a1);
         break;
 
-   case INDEX_op_cas8:
+   case INDEX_op_cas64:
         //tcg_out_cas(s, a0, a1, a2);
         tcg_out_cas(s, a1, a2, args[3], MO_64);
         tcg_out_mov(s, TCG_TYPE_I64, a0,a1);
@@ -2908,7 +2908,10 @@ static TCGConstraintSetIndex tcg_target_op_def(TCGOpcode op)
     case INDEX_op_bitsel_vec:
         return C_O1_I3(w, w, w, w);
 
-    case INDEX_op_cas:
+    case INDEX_op_cas8:
+    case INDEX_op_cas16:
+    case INDEX_op_cas32:
+    case INDEX_op_cas64:
         return C_O1_I3(r,r,r,r); //jasper
 
     case INDEX_op_aa64_sli_vec:
