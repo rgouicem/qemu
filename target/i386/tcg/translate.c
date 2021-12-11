@@ -5407,7 +5407,6 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
             tcg_temp_free(newv);
             tcg_temp_free(cmpv);
         }
-    }
     break;
     case 0x1c7: /* cmpxchg8b */
         modrm = x86_ldub_code(env, s);
