@@ -5350,90 +5350,65 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
     case 0x1b0:
     case 0x1b1: /* cmpxchg Ev, Gv */
         {
-            if (TCG_TARGET_HAS_cas) {
+            TCGv oldv, newv, cmpv;
 
-                TCGv newv, cmpv;
-                ot = mo_b_d(b, dflag);
-                modrm = x86_ldub_code(env, s);
-                reg = ((modrm >> 3) & 7) | REX_R(s);
-                mod = (modrm >> 6) & 3;
-                //oldv = tcg_temp_new();
-                newv = tcg_temp_new();
-                cmpv = tcg_temp_new();
-                gen_op_mov_v_reg(s, ot, newv, reg);
+            ot = mo_b_d(b, dflag);
+            modrm = x86_ldub_code(env, s);
+            reg = ((modrm >> 3) & 7) | REX_R(s);
+            mod = (modrm >> 6) & 3;
+            oldv = tcg_temp_new();
+            newv = tcg_temp_new();
+            cmpv = tcg_temp_new();
+            gen_op_mov_v_reg(s, ot, newv, reg);
+            tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
 
-                tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
-
-
-                gen_lea_modrm(env, s, modrm);   //load target address into s.A0?
-                tcg_gen_cas(cpu_regs[R_EAX],cpu_regs[R_EAX], newv, s->A0, ot | MO_LE);
-                //gen_op_mov_reg_v(s, ot, R_EAX, oldv);
-
-                tcg_gen_mov_tl(cpu_cc_src, cpu_regs[R_EAX]);
-                tcg_gen_mov_tl(s->cc_srcT, cmpv);
-                tcg_gen_sub_tl(cpu_cc_dst, cmpv, cpu_regs[R_EAX]);
-                set_cc_op(s, CC_OP_SUBB + ot);
-                //tcg_temp_free(oldv);
-                tcg_temp_free(newv);
-                //tcg_temp_free(cmpv);
-
-            } else { 
-                TCGv oldv, newv, cmpv;
-                ot = mo_b_d(b, dflag);
-                modrm = x86_ldub_code(env, s);
-                reg = ((modrm >> 3) & 7) | REX_R(s);
-                mod = (modrm >> 6) & 3;
-                oldv = tcg_temp_new();
-                newv = tcg_temp_new();
-                cmpv = tcg_temp_new();
-                gen_op_mov_v_reg(s, ot, newv, reg);
-
-                tcg_gen_mov_tl(cmpv, cpu_regs[R_EAX]);
-
-                if (s->prefix & PREFIX_LOCK) {
-                    if (mod == 3) {
-                        goto illegal_op;
-                    }
-                    gen_lea_modrm(env, s, modrm);
-                    //                      retv, addr,  cmpv, newv
-                    tcg_gen_atomic_cmpxchg_tl(oldv, s->A0, cmpv, newv,
-                                            s->mem_index, ot | MO_LE);
-                    gen_op_mov_reg_v(s, ot, R_EAX, oldv);
-                } else {
-                    if (mod == 3) {
-                        rm = (modrm & 7) | REX_B(s);
-                        gen_op_mov_v_reg(s, ot, oldv, rm);
-                    } else {
-                        gen_lea_modrm(env, s, modrm);
-                        gen_op_ld_v(s, ot, oldv, s->A0);
-                        rm = 0; /* avoid warning */
-                    }
-                    gen_extu(ot, oldv);
-                    gen_extu(ot, cmpv);
-                    /* store value = (old == cmp ? new : old);  */
-                    tcg_gen_movcond_tl(TCG_COND_EQ, newv, oldv, cmpv, newv, oldv);
-                    if (mod == 3) {
-                        gen_op_mov_reg_v(s, ot, R_EAX, oldv);
-                        gen_op_mov_reg_v(s, ot, rm, newv);
-                    } else {
-                        /* Perform an unconditional store cycle like physical cpu;
-                        must be before changing accumulator to ensure
-                        idempotency if the store faults and the instruction
-                        is restarted */
-                        gen_op_st_v(s, ot, newv, s->A0);
-                        gen_op_mov_reg_v(s, ot, R_EAX, oldv);
-                    }
+            if (s->prefix & PREFIX_LOCK) {
+                if (mod == 3) {
+                    goto illegal_op;
                 }
-                tcg_gen_mov_tl(cpu_cc_src, oldv);
-                tcg_gen_mov_tl(s->cc_srcT, cmpv);
-                tcg_gen_sub_tl(cpu_cc_dst, cmpv, oldv);
-                set_cc_op(s, CC_OP_SUBB + ot);
-                tcg_temp_free(oldv);
-                tcg_temp_free(newv);
-                tcg_temp_free(cmpv);
+                gen_lea_modrm(env, s, modrm);
+                if (TCG_TARGET_HAS_cas)
+                    tcg_gen_cas(oldv, cmpv, newv, s->A0, ot | MO_LE);
+                else
+                    //                        retv, addr,  cmpv, newv
+                    tcg_gen_atomic_cmpxchg_tl(oldv, s->A0, cmpv, newv,
+                                              s->mem_index, ot | MO_LE);
+                gen_op_mov_reg_v(s, ot, R_EAX, oldv);
+            } else {
+                if (mod == 3) {
+                    rm = (modrm & 7) | REX_B(s);
+                    gen_op_mov_v_reg(s, ot, oldv, rm);
+                } else {
+                    gen_lea_modrm(env, s, modrm);
+                    gen_op_ld_v(s, ot, oldv, s->A0);
+                    rm = 0; /* avoid warning */
+                }
+                gen_extu(ot, oldv);
+                gen_extu(ot, cmpv);
+                /* store value = (old == cmp ? new : old);  */
+                tcg_gen_movcond_tl(TCG_COND_EQ, newv, oldv, cmpv, newv, oldv);
+                if (mod == 3) {
+                    gen_op_mov_reg_v(s, ot, R_EAX, oldv);
+                    gen_op_mov_reg_v(s, ot, rm, newv);
+                } else {
+                    /* Perform an unconditional store cycle like physical cpu;
+                       must be before changing accumulator to ensure
+                       idempotency if the store faults and the instruction
+                       is restarted */
+                    gen_op_st_v(s, ot, newv, s->A0);
+                    gen_op_mov_reg_v(s, ot, R_EAX, oldv);
+                }
             }
+            tcg_gen_mov_tl(cpu_cc_src, oldv);
+            tcg_gen_mov_tl(s->cc_srcT, cmpv);
+            tcg_gen_sub_tl(cpu_cc_dst, cmpv, oldv);
+            set_cc_op(s, CC_OP_SUBB + ot);
+            tcg_temp_free(oldv);
+            tcg_temp_free(newv);
+            tcg_temp_free(cmpv);
         }
-        break;
+    }
+    break;
     case 0x1c7: /* cmpxchg8b */
         modrm = x86_ldub_code(env, s);
         mod = (modrm >> 6) & 3;

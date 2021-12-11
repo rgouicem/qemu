@@ -1347,24 +1347,26 @@ static void tcg_out_goto_long(TCGContext *s, const tcg_insn_unit *target)
     }
 }
 
-static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg, TCGReg addrreg, MemOp op){
-    AArch64Insn casins=CASAL32;
-    //op=MO_32;
-    switch (op){
-        case MO_8:
-            casins = CASAL8;
-            break;
-        case MO_16:
-            casins = CASAL16;
-            break;
-        case MO_32:
-            casins = CASAL32;
-            break;
-        case MO_64:
-            casins = CASAL64;
-            break;
-        default:
-            tcg_abort();
+static void tcg_out_cas(TCGContext *s, TCGReg cmpreg, TCGReg writereg,
+                        TCGReg addrreg, MemOp op)
+{
+    AArch64Insn casins = CASAL32;
+
+    switch (op) {
+    case MO_8:
+        casins = CASAL8;
+        break;
+    case MO_16:
+        casins = CASAL16;
+        break;
+    case MO_32:
+        casins = CASAL32;
+        break;
+    case MO_64:
+        casins = CASAL64;
+        break;
+    default:
+        tcg_abort();
     }
     tcg_out32(s, casins | cmpreg << 16 | writereg << 0 | addrreg << 5);
 }
