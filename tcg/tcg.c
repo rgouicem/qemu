@@ -23,7 +23,7 @@
  */
 
 /* define it to use liveness analysis (better code) */
-#define USE_TCG_OPTIMIZATIONS
+//#define USE_TCG_OPTIMIZATIONS
 
 #include "qemu/osdep.h"
 
