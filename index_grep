@@ -1,6 +1,0 @@
-block/quorum.c:#define INDEXSTR_LEN 32
-block/nbd.c:#define INDEX_TO_HANDLE(bs, index)  ((index)  ^ (uint64_t)(intptr_t)(bs))
-block/nvme.c:#define INDEX_ADMIN     0
-block/nvme.c:#define INDEX_IO(n)     (1 + n)
-hw/arm/smmuv3-internal.h:#define INDEX_MASK(q)      (((1 << (q)->log2size)) - 1)
-include/hw/ide/internal.h:#define INDEX_STAT		0x02
