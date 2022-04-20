@@ -2701,7 +2701,6 @@ static bool parse_elf_properties(int image_fd,
    in accessing data at aligned offsets within the buffer.
 
    On return: INFO values will be filled in, as necessary or available.  */
-
 static void load_elf_image(const char *image_name, int image_fd,
                            struct image_info *info, char **pinterp_name,
                            char bprm_buf[BPRM_BUF_SIZE])
@@ -3004,9 +3003,41 @@ static void load_elf_image(const char *image_name, int image_fd,
         info->end_data = info->end_code;
     }
 
-    if (qemu_log_enabled()) {
-        load_symbols(ehdr, image_fd, load_bias);
+    /* if (qemu_log_enabled()) { */
+    load_symbols(ehdr, image_fd, load_bias);
+    /* } */
+
+    /* Read symbol list to find functions */
+    static int invoc_nr;
+    if (invoc_nr == 0) {
+        /* int func_syms_idx = 0; */
+        /* func_syms = calloc(256, sizeof(struct func_sym)); */
+        /* if (!func_syms) { */
+        /*     perror("Failed to allocate func_syms\n"); */
+        /*     exit(222); */
+        /* } */
+        for (int i = 0; i < syminfos->disas_num_syms; i++) {
+            struct elf_sym *sym = syminfos->disas_symtab.elf64 + i;
+            if (ELF_ST_TYPE(sym->st_info) != STT_FUNC) {
+                continue;
+            }
+            /* func_syms[func_syms_idx].addr = sym->st_value; */
+            /* strncpy(func_syms[func_syms_idx].name, */
+            /*         syminfos->disas_strtab + sym->st_name, */
+            /*         127); */
+            fprintf(stderr, "%s:%d: '%s' 0x%lx -> 0x%lx  [size:0x%lx]\n",
+                    __func__, __LINE__,
+                    syminfos->disas_strtab + sym->st_name,
+                    /* func_syms[func_syms_idx].name, */
+                    sym->st_value,
+                    sym->st_value + sym->st_size,
+                    sym->st_size);
+                    /* func_syms[func_syms_idx].addr); */
+            /* func_syms_idx++; */
+        }
+        /* func_syms_size = func_syms_idx; */
     }
+    invoc_nr++;
 
     mmap_unlock();
 
