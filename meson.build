@@ -63,7 +63,7 @@ have_linux_user = false
 have_bsd_user = false
 have_system = false
 foreach target : target_dirs
-  have_linux_user = have_linux_user or target.endswith('linux-user')
+  have_linux_user = have_linux_user or target.endswith('linux-user') or target.endswith('libtcg')
   have_bsd_user = have_bsd_user or target.endswith('bsd-user')
   have_system = have_system or target.endswith('-softmmu')
 endforeach
@@ -2120,7 +2120,7 @@ actual_target_dirs = []
 fdt_required = []
 foreach target : target_dirs
   config_target = { 'TARGET_NAME': target.split('-')[0] }
-  if target.endswith('linux-user')
+  if target.endswith('linux-user') or target.endswith('libtcg')
     if targetos != 'linux'
       if default_targets
         continue
@@ -2145,6 +2145,9 @@ foreach target : target_dirs
       'CONFIG_QEMU_INTERP_PREFIX':
         config_host['CONFIG_QEMU_INTERP_PREFIX'].format(config_target['TARGET_NAME'])
     }
+  endif
+  if target.endswith('libtcg')
+    config_target += { 'CONFIG_LIBTCG': 'y' }
   endif
 
   accel_kconfig = []
@@ -3202,6 +3205,10 @@ foreach target : target_dirs
                                              extra_args : config_target['TARGET_SYSTBL_ABI'])
       endif
     endif
+    if 'CONFIG_LIBTCG' in config_target
+      base_dir = 'tcg'
+      qemu_target_name = 'libtcg.so'
+    endif
   endif
 
   if 'TARGET_XML_FILES' in config_target
@@ -3258,6 +3265,13 @@ foreach target : target_dirs
         'dependencies': specific_fuzz.dependencies(),
       }]
     endif
+  elif target.endswith('libtcg')
+    execs = [{
+      'name': 'libtcg.so',
+      'win_subsystem': 'console',
+      'sources': [],
+      'dependencies': []
+    }]
   else
     execs = [{
       'name': 'qemu-' + target_name,

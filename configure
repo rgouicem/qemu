@@ -908,6 +908,10 @@ for opt do
   ;;
   --enable-bsd-user) bsd_user="yes"
   ;;
+  --disable-libtcg) libtcg="no"
+  ;;
+  --enable-libtcg) libtcg="yes"
+  ;;
   --enable-pie) pie="yes"
   ;;
   --disable-pie) pie="no"
@@ -1149,6 +1153,9 @@ fi
 if [ "$bsd_user" = "yes" ]; then
     mak_wilds="${mak_wilds} $source_path/configs/targets/*-bsd-user.mak"
 fi
+# if [ "$libtcg" = "yes" ]; then
+#     mak_wilds="${mak_wilds} $source_path/configs/targets/*-libtcg.mak"
+# fi
 
 for config in $mak_wilds; do
     target="$(basename "$config" .mak)"
