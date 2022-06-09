@@ -3239,9 +3239,9 @@ foreach target : target_dirs
                  c_args: c_args,
                  build_by_default: false,
                  name_suffix: 'fa')
-  shlib = shared_library('tcg-@0@'.format(target_name),
+  shlib = shared_library('tcg-' + target_name,
                  sources: arch_srcs + genh,
-                 dependencies: arch_deps + glib + deps,
+                 dependencies: arch_deps + deps,
                  objects: objects,
                  include_directories: target_inc,
                  c_args: c_args,
