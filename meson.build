@@ -3225,6 +3225,7 @@ foreach target : target_dirs
 
   target_common = common_ss.apply(config_target, strict: false)
   objects = common_all.extract_objects(target_common.sources())
+  srcs = target_common.sources()
   deps = target_common.dependencies()
 
   target_specific = specific_ss.apply(config_target, strict: false)
@@ -3240,7 +3241,7 @@ foreach target : target_dirs
                  build_by_default: false,
                  name_suffix: 'fa')
   shlib = shared_library('tcg-' + target_name,
-                 sources: arch_srcs + genh,
+                 sources: srcs + arch_srcs + genh,
                  dependencies: arch_deps + deps,
                  objects: objects,
                  include_directories: target_inc,
