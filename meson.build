@@ -63,7 +63,7 @@ have_linux_user = false
 have_bsd_user = false
 have_system = false
 foreach target : target_dirs
-  have_linux_user = have_linux_user or target.endswith('linux-user') or target.endswith('libtcg')
+  have_linux_user = have_linux_user or target.endswith('linux-user')
   have_bsd_user = have_bsd_user or target.endswith('bsd-user')
   have_system = have_system or target.endswith('-softmmu')
 endforeach
@@ -2120,7 +2120,7 @@ actual_target_dirs = []
 fdt_required = []
 foreach target : target_dirs
   config_target = { 'TARGET_NAME': target.split('-')[0] }
-  if target.endswith('linux-user') or target.endswith('libtcg')
+  if target.endswith('linux-user')
     if targetos != 'linux'
       if default_targets
         continue
@@ -2145,9 +2145,6 @@ foreach target : target_dirs
       'CONFIG_QEMU_INTERP_PREFIX':
         config_host['CONFIG_QEMU_INTERP_PREFIX'].format(config_target['TARGET_NAME'])
     }
-  endif
-  if target.endswith('libtcg')
-    config_target += { 'CONFIG_LIBTCG': 'y' }
   endif
 
   accel_kconfig = []
@@ -2404,7 +2401,8 @@ if capstone_opt == 'internal'
                                build_by_default: false,
                                sources: capstone_files,
                                c_args: capstone_cargs,
-                               include_directories: 'capstone/include')
+                               include_directories: 'capstone/include',
+                               pic: true)
   capstone = declare_dependency(link_with: libcapstone,
                                 include_directories: 'capstone/include/capstone')
 endif
@@ -2818,7 +2816,8 @@ util_ss.add_all(trace_ss)
 util_ss = util_ss.apply(config_all, strict: false)
 libqemuutil = static_library('qemuutil',
                              sources: util_ss.sources() + stub_ss.sources() + genh,
-                             dependencies: [util_ss.dependencies(), libm, threads, glib, socket, malloc, pixman])
+                             dependencies: [util_ss.dependencies(), libm, threads, glib, socket, malloc, pixman],
+                             pic: true)
 qemuutil = declare_dependency(link_with: libqemuutil,
                               sources: genh + version_res)
 
@@ -3026,7 +3025,8 @@ qemu_syms = custom_target('qemu.syms', output: 'qemu.syms',
 qom_ss = qom_ss.apply(config_host, strict: false)
 libqom = static_library('qom', qom_ss.sources() + genh,
                         dependencies: [qom_ss.dependencies()],
-                        name_suffix: 'fa')
+                        name_suffix: 'fa',
+                        pic: true)
 
 qom = declare_dependency(link_whole: libqom)
 
@@ -3102,7 +3102,8 @@ chardev = declare_dependency(link_whole: libchardev)
 hwcore_ss = hwcore_ss.apply(config_host, strict: false)
 libhwcore = static_library('hwcore', sources: hwcore_ss.sources() + genh,
                            name_suffix: 'fa',
-                           build_by_default: false)
+                           build_by_default: false,
+                           pic: true)
 hwcore = declare_dependency(link_whole: libhwcore)
 common_ss.add(hwcore)
 
@@ -3133,6 +3134,7 @@ common_all = static_library('common',
                             include_directories: common_user_inc,
                             implicit_include_directories: false,
                             dependencies: common_all.dependencies(),
+                            pic: true,
                             name_suffix: 'fa')
 
 feature_to_c = find_program('scripts/feature_to_c.sh')
@@ -3145,6 +3147,7 @@ emulators = {}
 foreach target : target_dirs
   config_target = config_target_mak[target]
   target_name = config_target['TARGET_NAME']
+  target_real_arch = config_target['TARGET_ARCH']
   target_base_arch = config_target['TARGET_BASE_ARCH']
   arch_srcs = [config_target_h[target]]
   arch_deps = []
@@ -3205,10 +3208,6 @@ foreach target : target_dirs
                                              extra_args : config_target['TARGET_SYSTBL_ABI'])
       endif
     endif
-    if 'CONFIG_LIBTCG' in config_target
-      base_dir = 'tcg'
-      qemu_target_name = 'libtcg.so'
-    endif
   endif
 
   if 'TARGET_XML_FILES' in config_target
@@ -3240,6 +3239,16 @@ foreach target : target_dirs
                  c_args: c_args,
                  build_by_default: false,
                  name_suffix: 'fa')
+  shlib = shared_library('tcg-' + target_real_arch,
+                 sources: arch_srcs + genh,
+                 dependencies: arch_deps + glib + deps,
+                 objects: objects,
+                 include_directories: target_inc,
+                 c_args: c_args,
+                 build_by_default: true,
+                 name_suffix: 'so',
+                 version: '1.0.0',
+                 install: true)
 
   if target.endswith('-softmmu')
     execs = [{
@@ -3265,13 +3274,6 @@ foreach target : target_dirs
         'dependencies': specific_fuzz.dependencies(),
       }]
     endif
-  elif target.endswith('libtcg')
-    execs = [{
-      'name': 'libtcg.so',
-      'win_subsystem': 'console',
-      'sources': [],
-      'dependencies': []
-    }]
   else
     execs = [{
       'name': 'qemu-' + target_name,
