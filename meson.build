@@ -3147,7 +3147,6 @@ emulators = {}
 foreach target : target_dirs
   config_target = config_target_mak[target]
   target_name = config_target['TARGET_NAME']
-  target_real_arch = config_target['TARGET_ARCH']
   target_base_arch = config_target['TARGET_BASE_ARCH']
   arch_srcs = [config_target_h[target]]
   arch_deps = []
@@ -3240,8 +3239,9 @@ foreach target : target_dirs
                  c_args: c_args,
                  build_by_default: false,
                  name_suffix: 'fa')
+#  target_inc += include_directories('include' / 'exec', 'include' / 'qemu', 'include' / 'sysemu')
   shlib = shared_library('tcg-' + target_name,
-                 sources: srcs + arch_srcs + genh,
+                 sources: arch_srcs + genh,
                  dependencies: arch_deps + deps,
                  objects: objects,
                  include_directories: target_inc,
