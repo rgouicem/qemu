@@ -3240,7 +3240,7 @@ foreach target : target_dirs
                  build_by_default: false,
                  name_suffix: 'fa')
 #  target_inc += include_directories('include' / 'exec', 'include' / 'qemu', 'include' / 'sysemu')
-  shlib = static_library('tcg-' + target_name,
+  shlib = shared_library('tcg-' + target_name,
                  sources: arch_srcs + genh,
                  dependencies: arch_deps + deps,
                  objects: objects,
@@ -3248,7 +3248,7 @@ foreach target : target_dirs
                  c_args: c_args,
                  build_by_default: true,
                  name_suffix: 'a',
-#                 version: '1.0.0',
+                 version: '1.0.0',
                  install: true)
 
   if target.endswith('-softmmu')
