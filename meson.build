@@ -3247,7 +3247,7 @@ foreach target : target_dirs
                  include_directories: target_inc,
                  c_args: c_args,
                  build_by_default: true,
-                 name_suffix: 'a',
+                 name_suffix: 'so',
                  version: '1.0.0',
                  install: true)
 
