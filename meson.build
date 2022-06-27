@@ -3248,7 +3248,7 @@ foreach target : target_dirs
                  c_args: c_args,
                  build_by_default: true,
                  name_suffix: 'so',
-                 version: '1.0.0',
+                 version: '0.1.0',
                  install: true)
 
   if target.endswith('-softmmu')
