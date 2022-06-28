@@ -1,52 +1,14 @@
 
-#include "qemu/osdep.h"
-#include "qemu-common.h"
-#include "qemu/units.h"
-#include "qemu/accel.h"
-#include "sysemu/tcg.h"
-#include "qemu-version.h"
-#include <sys/syscall.h>
-#include <sys/resource.h>
-#include <sys/shm.h>
-#include <linux/binfmts.h>
-
-#include "qapi/error.h"
-#include "qemu.h"
-#include "user-internals.h"
-#include "qemu/path.h"
-#include "qemu/queue.h"
-#include "qemu/config-file.h"
-#include "qemu/cutils.h"
-#include "qemu/error-report.h"
-#include "qemu/help_option.h"
-#include "qemu/module.h"
-#include "qemu/plugin.h"
-#include "exec/exec-all.h"
-#include "exec/gdbstub.h"
-#include "tcg/tcg.h"
-#include "qemu/timer.h"
-#include "qemu/envlist.h"
-#include "qemu/guest-random.h"
-#include "elf.h"
-#include "trace/control.h"
-#include "target_elf.h"
-#include "cpu_loop-common.h"
-#include "crypto/init.h"
-#include "fd-trans.h"
-#include "signal-common.h"
-#include "loader.h"
-#include "user-mmap.h"
-#include "../accel/tcg/internal.h"
-
 #include "tcg/libtcg.h"
 
-int translate_block(target_ulong *block_inst)
+int translate_tb_to_tcg(libtcg_ctx *ctx)
 {
     CPUState *cpu;
     /* CPUArchState *env; */
     AccelClass *ac = ACCEL_GET_CLASS(current_accel());
     target_ulong cs_base, pc;
     uint32_t flags, cflags;
+    TranslationBlock *tb;
 
     accel_init_interfaces(ac);
     ac->init_machine(NULL);
@@ -60,7 +22,16 @@ int translate_block(target_ulong *block_inst)
     cpu_get_tb_cpu_state(cpu->env_ptr, &pc, &cs_base, &flags);
     cflags = curr_cflags(cpu);
 
-    tb_gen_code(cpu, pc, cs_base, flags, cflags);
+    tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
+    ctx->tcg_icount = tb->icount;
+    ctx->tcg_size = tb->size;
 
-    return 0;
+    return NULL;
+}
+
+libtcg_ctx *alloc_libtcg_ctx(void)
+{
+    libtcg_ctx *ctx = malloc(sizeof(libtcg_ctx));
+
+    return ctx;
 }
