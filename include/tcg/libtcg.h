@@ -52,11 +52,13 @@ struct libtcg_ctx {
     /* Target (host) */
     uint64_t host_size;
     uint64_t host_icount;
+
+    /* Private */
+    CPUState *cpu;
 };
 typedef struct libtcg_ctx libtcg_ctx;
 
-
+libtcg_ctx *init_libtcg(void);
 int translate_tb_to_tcg(libtcg_ctx *ctx);
-libtcg_ctx *alloc_libtcg_ctx(void);
 
 #endif  /* LIBTCG_H */
