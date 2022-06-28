@@ -56,7 +56,7 @@ struct libtcg_ctx {
 typedef struct libtcg_ctx libtcg_ctx;
 
 
-int translate_block(libtcg_ctx *ctx);
+int translate_tb_to_tcg(libtcg_ctx *ctx);
 libtcg_ctx *alloc_libtcg_ctx(void);
 
 #endif  /* LIBTCG_H */

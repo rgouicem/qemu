@@ -26,7 +26,7 @@ int translate_tb_to_tcg(libtcg_ctx *ctx)
     ctx->tcg_icount = tb->icount;
     ctx->tcg_size = tb->size;
 
-    return NULL;
+    return 0;
 }
 
 libtcg_ctx *alloc_libtcg_ctx(void)
