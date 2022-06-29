@@ -33,6 +33,7 @@ libtcg_ctx *init_libtcg(void)
     AccelClass *ac;
     libtcg_ctx *ctx;
 
+    qemu_init_cpu_list();
     module_call_init(MODULE_INIT_QOM);
 
     ac = ACCEL_GET_CLASS(current_accel());
