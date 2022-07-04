@@ -55,6 +55,9 @@
 #include "loader.h"
 #include "user-mmap.h"
 
+#include "tcg/libtcg.h"
+#include "../accel/tcg/internal.h"
+
 #ifndef AT_FLAGS_PRESERVE_ARGV0
 #define AT_FLAGS_PRESERVE_ARGV0_BIT 0
 #define AT_FLAGS_PRESERVE_ARGV0 (1 << AT_FLAGS_PRESERVE_ARGV0_BIT)
@@ -628,7 +631,8 @@ static int parse_args(int argc, char **argv)
     return optind;
 }
 
-int main(int argc, char **argv, char **envp)
+
+static CPUState *linux_user_init(int argc, char **argv, char **envp)
 {
     struct target_pt_regs regs1, *regs = &regs1;
     struct image_info info1, *info = &info1;
@@ -695,7 +699,7 @@ int main(int argc, char **argv, char **envp)
     /* Zero out image_info */
     memset(info, 0, sizeof(struct image_info));
 
-    memset(&bprm, 0, sizeof (bprm));
+    memset(&bprm, 0, sizeof(bprm));
 
     /* Scan interp_prefix dir for replacement files. */
     init_paths(interp_prefix);
@@ -787,9 +791,9 @@ int main(int argc, char **argv, char **envp)
      * is needed.  It is also used in mmap_find_vma.
      */
     {
-        FILE *fp;
+        FILE *fp = fopen("/proc/sys/vm/mmap_min_addr", "r");
 
-        if ((fp = fopen("/proc/sys/vm/mmap_min_addr", "r")) != NULL) {
+        if (fp != NULL) {
             unsigned long tmp;
             if (fscanf(fp, "%lu", &tmp) == 1 && tmp != 0) {
                 mmap_min_addr = tmp;
@@ -815,7 +819,7 @@ int main(int argc, char **argv, char **envp)
      * Prepare copy of argv vector for target.
      */
     target_argc = argc - optind;
-    target_argv = calloc(target_argc + 1, sizeof (char *));
+    target_argv = calloc(target_argc + 1, sizeof(char *));
     if (target_argv == NULL) {
         (void) fprintf(stderr, "Unable to allocate memory for target_argv\n");
         exit(EXIT_FAILURE);
@@ -879,9 +883,11 @@ int main(int argc, char **argv, char **envp)
     syscall_init();
     signal_init();
 
-    /* Now that we've loaded the binary, GUEST_BASE is fixed.  Delay
-       generating the prologue until now so that the prologue can take
-       the real value of GUEST_BASE into account.  */
+    /*
+     * Now that we've loaded the binary, GUEST_BASE is fixed.  Delay
+     * generating the prologue until now so that the prologue can take
+     * the real value of GUEST_BASE into account.
+     */
     tcg_prologue_init(tcg_ctx);
 
     target_cpu_copy_regs(env, regs);
@@ -894,7 +900,126 @@ int main(int argc, char **argv, char **envp)
         }
         gdb_handlesig(cpu, 0);
     }
+
+    return cpu;
+}
+
+int main(int argc, char **argv, char **envp)
+{
+    CPUState *cpu = linux_user_init(argc, argv, envp);
+    CPUArchState *env = cpu->env_ptr;
+
     cpu_loop(env);
     /* never exits */
     return 0;
 }
+
+libtcg_ctx *init_libtcg(int argc, char **argv, char **envp)
+{
+    CPUState *cpu = linux_user_init(argc, argv, envp);
+    CPUArchState *env = cpu->env_ptr;
+    libtcg_ctx *ctx;
+
+    ctx = malloc(sizeof(libtcg_ctx));
+    if (!ctx) {
+        return NULL;
+    }
+    ctx = memset(ctx, 0, sizeof(libtcg_ctx));
+
+    ctx->cpu = cpu;
+    ctx->env = env;
+
+    /* set logging to stderr */
+    qemu_set_log_filename(NULL, NULL);
+
+    return ctx;
+}
+
+int translate_tb_to_tcg(libtcg_ctx *ctx)
+{
+    CPUState *cpu = ctx->cpu;
+    CPUArchState *env = ctx->env;
+    target_ulong cs_base, pc;
+    uint32_t flags, cflags;
+    tb_page_addr_t phys_pc;
+    tcg_insn_unit *gen_code_buf;
+    int gen_code_size, max_insns;
+    TranslationBlock *tb;
+    TCGOp *op;
+    int i = 0;
+
+    cpu_get_tb_cpu_state(cpu->env_ptr, &pc, &cs_base, &flags);
+    cflags = curr_cflags(cpu);
+
+    ctx->guest_pc = pc;
+
+    /* assert_memory_lock(); */
+    qemu_thread_jit_write();
+
+    phys_pc = get_page_addr_code(env, pc);
+
+    if (phys_pc == -1) {
+        /* Generate a one-shot TB with 1 insn in it */
+        cflags = (cflags & ~CF_COUNT_MASK) | CF_LAST_IO | 1;
+    }
+
+    max_insns = cflags & CF_COUNT_MASK;
+    if (max_insns == 0) {
+        max_insns = TCG_MAX_INSNS;
+    }
+
+    tb = tcg_tb_alloc(tcg_ctx);
+    if (unlikely(!tb)) {
+        /* flush must be done */
+        tb_flush(cpu);
+        mmap_unlock();
+        /* Make the execution loop process the flush as soon as possible.  */
+        cpu->exception_index = EXCP_INTERRUPT;
+        return -EOVERFLOW;
+    }
+
+    gen_code_buf = tcg_ctx->code_gen_ptr;
+    tb->tc.ptr = tcg_splitwx_to_rx(gen_code_buf);
+    tb->pc = pc;
+    tb->cs_base = cs_base;
+    tb->flags = flags;
+    tb->cflags = cflags;
+    tb->trace_vcpu_dstate = *cpu->trace_dstate;
+    tcg_ctx->tb_cflags = cflags;
+
+    gen_code_size = sigsetjmp(tcg_ctx->jmp_trans, 0);
+    if (unlikely(gen_code_size != 0)) {
+        return -EFAULT;
+    }
+
+    tcg_func_start(tcg_ctx);
+
+    tcg_ctx->cpu = env_cpu(env);
+    gen_intermediate_code(cpu, tb, max_insns);
+    assert(tb->size != 0);
+    tcg_ctx->cpu = NULL;
+    max_insns = tb->icount;
+
+    /* ********************************************** */
+
+    /* tb = tb_gen_code(cpu, pc, cs_base, flags, cflags); */
+    /* ctx->tcg_icount = tb->icount; */
+    /* ctx->tcg_size = tb->size; */
+
+    /* Copy TCGOp instructions from the list to an array */
+    ctx->tcg_insn = malloc(ctx->tcg_icount * sizeof(TCGOp));
+    if (!ctx->tcg_insn) {
+        fprintf(stderr, "libtcg: Failed to allocate TCGOp array\n");
+        return -ENOMEM;
+    }
+    QTAILQ_FOREACH(op, &tcg_ctx->ops, link) {
+        ctx->tcg_insn[i] = *op;
+        i++;
+        /* tcg_dump_op(op, false); */
+    }
+
+    ctx->tcg_icount = i;
+
+    return 0;
+}
+
