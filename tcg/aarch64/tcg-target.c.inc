@@ -2913,7 +2913,7 @@ static TCGConstraintSetIndex tcg_target_op_def(TCGOpcode op)
     case INDEX_op_cas16:
     case INDEX_op_cas32:
     case INDEX_op_cas64:
-        return C_O1_I3(r,r,r,r); 
+        return C_O1_I3(r, 0, r, r);
 
     case INDEX_op_aa64_sli_vec:
         return C_O1_I2(w, 0, w);
